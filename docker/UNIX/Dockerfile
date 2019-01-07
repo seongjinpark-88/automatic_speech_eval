@@ -4,7 +4,7 @@ FROM ubuntu:16.04
 MAINTAINER Seongjin Park
 
 # ENV and ARG variables
-ARG HOME=~/research
+ARG HOME=/Users/seongjinpark/research
 ENV SHELL=/bin/bash
 ENV KALDI_PATH=${HOME}/automatic_speech_eval
 ENV KALDI_TIMIT_PATH=${KALDI_PATH}/egs/timit/s5
@@ -57,7 +57,8 @@ RUN pip install plotly pynlpl graphviz
 WORKDIR ${HOME}
 RUN git clone https://github.com/seongjinpark-88/automatic_speech_eval.git
 WORKDIR ${KALDI_PATH}
-RUN git fetch && git checkout
+RUN git fetch
+RUN git checkout
 
 # install kaldi-specific tools
 WORKDIR ${KALDI_PATH}/tools
@@ -100,4 +101,4 @@ RUN make
 WORKDIR ${KALDI_PATH}/tools
 RUN extras/check_installations.sh
 
-WORKDIR ${KALDI_INSTRUCTIONAL_PATH}
+WORKDIR ${KALDI_TIMIT_PATH}
