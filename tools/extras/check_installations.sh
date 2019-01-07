@@ -12,7 +12,7 @@ fi
 
 # source file with some path info
 cd ${KALDI_TIMIT_PATH}
-. /path.sh
+./path.sh
 
 ##########
 # IRSTLM #
