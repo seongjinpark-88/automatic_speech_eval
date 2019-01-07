@@ -11,7 +11,7 @@ if [ -z ${KALDI_PATH} ]; then
 fi
 
 # source file with some path info
-cd ${KALDI_INSTRUCTIONAL_PATH}
+cd ${KALDI_TIMIT_PATH}
 . /path.sh
 
 ##########
