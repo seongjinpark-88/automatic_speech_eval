@@ -84,6 +84,9 @@ RUN export PATH=${PATH}:${IRSTLM}/bin
 WORKDIR ${KALDI_PATH}/tools
 RUN make -j 4
 
+ENV FST=${KALDI_PATH}/tools/openfst
+RUN export PATH=${PATH}:${FST}/bin
+
 # compile kaldi source code
 WORKDIR ${KALDI_PATH}/src
 RUN ./configure --shared
@@ -98,7 +101,7 @@ RUN make -j 4
 #RUN make
 
 # check installations
-# WORKDIR ${KALDI_PATH}/tools
-# RUN extras/check_installations.sh
+WORKDIR ${KALDI_PATH}/tools
+RUN extras/check_installations.sh
 
 WORKDIR ${KALDI_TIMIT_PATH}
