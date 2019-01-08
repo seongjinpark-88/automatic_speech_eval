@@ -53,7 +53,7 @@ RUN pip install jupyter bash_kernel ; python -m bash_kernel.install
 # install numpy and plotly and PyNLPl and graphviz
 RUN pip install plotly pynlpl graphviz
 
-# clone kaldi_instructional
+# clone automatic_speech_eval
 WORKDIR ${HOME}
 RUN git clone https://github.com/seongjinpark-88/automatic_speech_eval.git
 WORKDIR ${KALDI_PATH}
@@ -82,13 +82,13 @@ RUN export PATH=${PATH}:${IRSTLM}/bin
 
 # compile remaining tools
 WORKDIR ${KALDI_PATH}/tools
-RUN make
+RUN make -j 4
 
 # compile kaldi source code
 WORKDIR ${KALDI_PATH}/src
 RUN ./configure --shared
 RUN make depend
-RUN make
+RUN make -j 4
 
 # compile TF RNN src
 #WORKDIR ${KALDI_PATH}/src/tfrnnlm
@@ -98,7 +98,7 @@ RUN make
 #RUN make
 
 # check installations
-WORKDIR ${KALDI_PATH}/tools
-RUN extras/check_installations.sh
+# WORKDIR ${KALDI_PATH}/tools
+# RUN extras/check_installations.sh
 
 WORKDIR ${KALDI_TIMIT_PATH}
