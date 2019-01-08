@@ -54,6 +54,13 @@ echo "========================"
 #########
 # openfst
 #########
+FST=${KALDI_PATH}/tools/openfst
+if [[ `expr index ${PATH} ${FST}` != 0 ]]; then
+    export FST=${FST}
+    export PATH=${PATH}:${FST}/bin
+fi
+
+
 out_=$(fstinfo --help)
 
 if [[ "${out_}" =~ "Prints out information about" ]]; then
