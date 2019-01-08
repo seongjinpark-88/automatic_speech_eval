@@ -20,5 +20,5 @@ done
 
 # cannot link all the way at kaldi root directory
 docker run -it --rm -p $port:$port \
-    -v `pwd`/s5:/User/seongjinpark/research/automatic_speech_eval/egs/timit/s5 \
+    -v `pwd`/s5:/User/seongjinpark/research/automatic_speech_eval/egs/ \
     docker-timit
