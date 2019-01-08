@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# run Jupyter notebook
 # -p which port is open for jupyter access
 
 port=8880
