@@ -17,8 +17,8 @@ utils=`pwd`/utils
 conf=`pwd`/conf
 
 . ./path.sh # Needed for KALDI_ROOT
-export PATH=$PATH:$KALDI_ROOT/tools/irstlm/bin
-sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
+export PATH=$PATH:$KALDI_PATH/tools/irstlm/bin
+sph2pipe=$KALDI_PATH/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";
    exit 1;

@@ -62,14 +62,14 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
 
 # (2) Create the phone bigram LM
 if [ -z $IRSTLM ] ; then
-  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+  export IRSTLM=$KALDI_PATH/tools/irstlm/
 fi
 export PATH=${PATH}:$IRSTLM/bin
 if ! command -v prune-lm >/dev/null 2>&1 ; then
   echo "$0: Error: the IRSTLM is not available or compiled" >&2
   echo "$0: Error: We used to install it by default, but." >&2
   echo "$0: Error: this is no longer the case." >&2
-  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: To install it, go to $KALDI_PATH/tools" >&2
   echo "$0: Error: and run extras/install_irstlm.sh" >&2
   exit 1
 fi
