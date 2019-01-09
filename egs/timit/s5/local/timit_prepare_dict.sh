@@ -26,11 +26,13 @@
 # optional_silence.txt
 # silence_phones.txt
 
+. ../path.sh
+
 # run this from ../
-srcdir=data/local/data
-dir=data/local/dict
-lmdir=data/local/nist_lm
-tmpdir=data/local/lm_tmp
+srcdir=${KALDI_TIMIT_PATH}/data/local/data
+dir=${KALDI_TIMIT_PATH}/data/local/dict
+lmdir=${KALDI_TIMIT_PATH}/data/local/nist_lm
+tmpdir=${KALDI_TIMIT_PATH}/data/local/lm_tmp
 
 mkdir -p $dir $lmdir $tmpdir
 
