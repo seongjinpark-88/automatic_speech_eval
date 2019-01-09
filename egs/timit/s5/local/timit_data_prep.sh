@@ -9,16 +9,18 @@ if [ $# -ne 1 ]; then
    exit 1;
 fi
 
-dir=`pwd`/data/local/data
-lmdir=`pwd`/data/local/nist_lm
+dir=${KALDI_TIMIT_PATH}/data/local/data
+lmdir=${KALDI_TIMIT_PATH}/data/local/nist_lm
+
 mkdir -p $dir $lmdir
-local=`pwd`/local
-utils=`pwd`/utils
-conf=`pwd`/conf
+
+local=${KALDI_TIMIT_PATH}/local
+utils=${KALDI_TIMIT_PATH}/utils
+conf=${KALDI_TIMIT_PATH}/conf
 
 . ./path.sh # Needed for KALDI_ROOT
-export PATH=$PATH:$KALDI_PATH/tools/irstlm/bin
-sph2pipe=$KALDI_PATH/tools/sph2pipe_v2.5/sph2pipe
+export PATH=${PATH}:${KALDI_PATH}/tools/irstlm/bin
+sph2pipe=${KALDI_PATH}/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";
    exit 1;
