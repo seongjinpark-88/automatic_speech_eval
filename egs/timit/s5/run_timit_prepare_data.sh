@@ -80,7 +80,7 @@ for lm_suffix in bg; do
   rm -r $tmpdir/g
 done
 
-utils/validate_lang.pl data/lang_test_bg || exit 1
+${KALDI_TIMIT_PATH}/utils/validate_lang.pl ${KALDI_TIMIT_PATH}/data/lang_test_bg || exit 1
 
 # for ASR lab 2017
 # rm ${KALDI_TIMIT_PATH}/data/train/utt2spk
