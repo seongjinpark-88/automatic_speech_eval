@@ -4,9 +4,10 @@ FROM ubuntu:16.04
 MAINTAINER Seongjin Park
 
 # ENV and ARG variables
-ARG HOME=/home/seongjinpark/research/git_repo/automatic_speech_eval/
+ARG HOME=/home/seongjinpark/research/git_repo/
 ENV SHELL=/bin/bash
-ENV KALDI_PATH=${HOME}/kaldi
+ENV GIT_PATH=${HOME}/automatic_speech_eval/
+ENV KALDI_PATH=${GIT_PATH}/kaldi/
 ENV KALDI_INSTRUCTIONAL_PATH=${KALDI_PATH}/egs/
 
 # install dependencies
@@ -61,7 +62,7 @@ RUN pip install plotly pynlpl graphviz
 # clone kaldi_instructional
 WORKDIR ${HOME}
 RUN git clone https://github.com/seongjinpark-88/automatic_speech_eval.git
-WORKDIR ${KALDI_PATH}
+WORKDIR ${GIT_PATH}
 RUN git fetch && git checkout
 
 # install kaldi-specific tools
