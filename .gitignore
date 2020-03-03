@@ -144,3 +144,16 @@ kaldi/tools/phonetisaurus-g2p/
 kaldi/tools/mmseg-1.3.0.tar.gz
 kaldi/tools/mmseg-1.3.0/
 kaldi/kaldiwin_vs*
+
+
+# keras_asa
+
+keras_asa/audio
+keras_asa/opensmile_data
+
+# audio and data files
+*.wav
+*.csv
+*.txt
+*.xlsc
+*.jpg
