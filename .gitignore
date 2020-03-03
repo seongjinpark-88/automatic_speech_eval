@@ -1,0 +1,146 @@
+# Compiled extensionless executable files in /src/*/
+# This stanza must precede wildcard patterns below!
+/src/*/*
+!/src/lm/test_data/
+!/src/*/?*.*
+!/src/doc/*
+!/src/*/Makefile
+!/src/*/README
+
+# Compiled Object files and python ciles
+*.slo
+*.lo
+*.o
+*.obj
+*.pyc
+
+# profiling files and core files
+*.nvprof
+core
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Test log files
+*.testlog
+
+# emacs saves
+[#]*[#]
+.[#]*
+*~
+
+# [ecg]tag files
+TAGS
+tags
+GTAGS
+GRTAGS
+GPATH
+GSYMS
+
+# python compiled sources
+*.pyc
+
+# Make dependencies
+.depend.mk
+
+# some weird thing that MacOs creates.
+*.dSYM
+
+# Windows executable, symbol and some weird files.
+*.exe
+*.pdb
+*.exp
+*.manifest
+
+# /src/
+kaldi/src/.short_version
+kaldi/src/base/version.h
+kaldi/src/doc/table/
+kaldi/src/doc/tools.dox
+kaldi/src/doc/*.html
+kaldi/src/htdocs/
+kaldi/src/html.tar.gz
+kaldi/src/kaldi.mk
+kaldi/src/kaldi.mk.tmp
+kaldi/src/kaldi.mk.bak
+
+# /egs/
+kaldi/egs/*/s*/mfcc
+kaldi/egs/*/s*/plp
+kaldi/egs/*/s*/exp
+kaldi/egs/*/s*/data
+kaldi/egs/*/s*/data*
+
+# /tools/
+kaldi/tools/ATLAS/
+kaldi/tools/atlas3.8.3.tar.gz
+kaldi/tools/irstlm/
+kaldi/tools/openfst
+kaldi/tools/openfst-1.3.2.tar.gz
+kaldi/tools/openfst-1.3.2/
+kaldi/tools/openfst-1.3.4.tar.gz
+kaldi/tools/openfst-1.3.4/
+kaldi/tools/openfst-1.4.1.tar.gz
+kaldi/tools/openfst-1.4.1/
+kaldi/tools/openfst-1.5.0.tar.gz
+kaldi/tools/openfst-1.5.0/
+kaldi/tools/openfst-1.5.4.tar.gz
+kaldi/tools/openfst-1.5.4/
+kaldi/tools/openfst-1.6.0.tar.gz
+kaldi/tools/openfst-1.6.0/
+kaldi/tools/openfst-1.6.1.tar.gz
+kaldi/tools/openfst-1.6.1/
+kaldi/tools/openfst-1.6.2.tar.gz
+kaldi/tools/openfst-1.6.2/
+kaldi/tools/openfst-1.6.5.tar.gz
+kaldi/tools/openfst-1.6.5/
+kaldi/tools/openfst-1.6.7.tar.gz
+kaldi/tools/openfst-1.6.7/
+kaldi/tools/BeamformIt/
+kaldi/tools/libsndfile-1.0.25.tar.gz
+kaldi/tools/libsndfile-1.0.25/
+kaldi/tools/pa_stable_v19_20111121.tgz
+kaldi/tools/portaudio/
+kaldi/tools/sctk-2.4.0-20091110-0958.tar.bz2
+kaldi/tools/sctk-2.4.0/
+kaldi/tools/sctk-2.4.10-20151007-1312Z.tar.bz2
+kaldi/tools/sctk-2.4.10/
+kaldi/tools/sph2pipe_v2.5.tar.gz
+kaldi/tools/sph2pipe_v2.5/
+kaldi/tools/kaldi_lm.tar.gz
+kaldi/tools/sctk-2.4.8-20130429-2145.tar.bz2
+kaldi/tools/sctk-2.4.9-20141015-1634Z.tar.bz2
+kaldi/tools/sctk-2.4.9/
+kaldi/tools/OpenBLAS
+kaldi/tools/sctk
+kaldi/tools/sctk-2.4.8
+kaldi/tools/srilm
+kaldi/tools/CLAPACK_include
+kaldi/tools/kaldi_lm
+kaldi/tools/env.sh
+kaldi/tools/g2p-r1668.tar.gz
+kaldi/tools/mpg123
+kaldi/tools/mpg123-1.21.0.tar.bz2
+kaldi/tools/mpg123-1.21.0
+kaldi/tools/pthreads
+kaldi/tools/pthreads*.zip
+kaldi/tools/sequitur
+kaldi/tools/sequitur-g2p
+kaldi/tools/srilm.tgz
+kaldi/tools/liblbfgs-1.10.tar.gz
+kaldi/tools/liblbfgs-1.10/
+kaldi/tools/srilm-1.7.2-beta.tar.gz
+kaldi/tools/liblbfgs/
+kaldi/tools/sequitur-g2p/
+kaldi/tools/phonetisaurus-g2p/
+kaldi/tools/mmseg-1.3.0.tar.gz
+kaldi/tools/mmseg-1.3.0/
+kaldi/kaldiwin_vs*
