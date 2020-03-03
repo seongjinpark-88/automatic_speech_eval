@@ -1,11 +1,11 @@
 # Compiled extensionless executable files in /src/*/
 # This stanza must precede wildcard patterns below!
-/src/*/*
-!/src/lm/test_data/
-!/src/*/?*.*
-!/src/doc/*
-!/src/*/Makefile
-!/src/*/README
+kaldi/src/*/*
+!kaldi/src/lm/test_data/
+!kaldi/src/*/?*.*
+!kaldi/src/doc/*
+!kaldi/src/*/Makefile
+!kaldi/src/*/README
 
 # Compiled Object files and python ciles
 *.slo
