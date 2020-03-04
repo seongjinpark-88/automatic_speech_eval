@@ -5,38 +5,47 @@ import numpy as np
 import pandas as pd
 
 
-def get_select_cols(suprafile, cols):
+class GetFeatures:
     """
-    If you happen to use a conf file that results in too much data
-    and want to clean it up, select only the columns you want.
-    suprafile: the path to a csv file containing results
-    cols: an array of columns that you want to select
-    """
-    supras = pd.read_csv(suprafile, sep=',')
-    try:
-        return supras[cols]
-    except:
-        for col in cols:
-            if col not in supras.columns:
-                cols.remove(col)
-        return supras[cols]
-
-
-class Suprasegmentals:
-    """
-    Takes input files and gets suprasegmental features
+    Takes input files and gets segmental and/or suprasegmental features
     Current features extracted: XXXX, YYYY, ZZZZ
     """
     def __init__(self, audio_path, opensmile_path):
         self.apath = audio_path
         self.smilepath = opensmile_path
+        self.supra_name = None
+        self.segment_name = None
 
-    def get_features(self, output_name):
+    def get_features(self, output_name, supra=True):
         for f in os.listdir(self.apath):
             if f.endswith('.wav'):
-                # todo: replace config file with the appropriate choice
-                os.system("{0}/SMILExtract -C {0}/config/IS10_paraling.conf -I {1}\
-                          -csvoutput {2}".format(self.smilepath, f, output_name))
+                # todo: replace config files with the appropriate choice
+                if supra is True:
+                    os.system("{0}/SMILExtract -C {0}/config/IS10_paraling.conf -I {1}/{2}\
+                          -csvoutput {3}".format(self.smilepath, self.apath, f, output_name))
+                    self.segment_name = output_name
+                else:
+                    os.system("{0}/SMILExtract -C {0}/config/IS09_paraling.conf -I {1}/{2}\
+                          -csvoutput {3}".format(self.smilepath, self.apath, f, output_name))
+                    self.supra_name = output_name
+
+    def get_select_cols(self, cols):
+        """
+        If you happen to use a conf file that results in too much data
+        and want to clean it up, select only the columns you want.
+        suprafile: the path to a csv file containing results
+        cols: an array of columns that you want to select
+        Returns data as an np array
+        """
+        suprafile = "{0}/{1}.csv".format(self.apath, self.supra_name)
+        supras = pd.read_csv(suprafile, sep=',')
+        try:
+            return supras[cols]
+        except:
+            for col in cols:
+                if col not in supras.columns:
+                    cols.remove(col)
+            return supras[cols].to_numpy()
 
 
 class PrepareData:
