@@ -29,9 +29,9 @@ numGaussUBM=400
 numLeavesSGMM=7000
 numGaussSGMM=9000
 
-feats_nj=4
-train_nj=4
-decode_nj=4
+feats_nj=8
+train_nj=8
+decode_nj=8
 
 echo ============================================================================
 echo "                Data & Lexicon & Language Preparation                     "
