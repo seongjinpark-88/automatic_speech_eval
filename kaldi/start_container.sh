@@ -20,5 +20,5 @@ done
 
 # cannot link all the way at kaldi root directory
 docker run -it --rm -p $port:$port \
-    -v `pwd`:/home/seongjinpark/research/git_repo/automatic_speech_eval/kaldi \
+    -v `pwd`/egs:/home/seongjinpark/research/git_repo/automatic_speech_eval/kaldi/egs \
     docker-kaldi
