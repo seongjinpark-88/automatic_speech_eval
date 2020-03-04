@@ -6,7 +6,7 @@
 # see ../run.sh for example
 
 # Begin configuration section.
-nj=4
+nj=8
 cmd=run.pl
 mfcc_config=conf/mfcc.conf
 compress=true
