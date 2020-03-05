@@ -4,6 +4,11 @@ import os
 import numpy as np
 import pandas as pd
 
+import keras
+from keras.models import Sequential, Model
+from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Conv2D, MaxPooling2D
+
 
 class GetFeatures:
     """
@@ -85,4 +90,26 @@ class PrepareData:
         Concatenate the segmental and suprasegmental data
         """
         if self.segmental is not None and self.suprasegmental is not None:
-            np.concatenate((self.segmental, self.suprasegmental), axis=1)
+            return np.concatenate((self.segmental, self.suprasegmental), axis=1)
+
+    def get_data_size(self):
+        return self.concat_data().size()
+
+
+class AdaptiveModel:
+    """
+    Should allow for input of 1, 2, or all 3 types of data;
+    todo: should all types be handled with the same architecture?
+    """
+    def __init__(self, data, data_size):
+        self.data = data
+        self.data_size = data_size
+        self.model = Sequential()
+
+    def define_model(self, n_hidden=1, act='relu', output_act='softmax'):
+        """
+        Initialize the model
+        n_hidden: the number of hidden layers
+        """
+        self.model.add(Dense(25, input_dim=self.data_size[1], activation=act))
+        self.model.add(Dense(7, activation=output_act))
