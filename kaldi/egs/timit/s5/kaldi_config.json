@@ -55,19 +55,15 @@
     "parameters": {
       "mfcc_config": {
         "flag": "-c",
-        "value": "conf/mfcc_defaults.conf"
+        "value": "conf/mfcc.conf"
       },
-      "train_data_present": {
-        "flag": "-n",
-        "value": true
-      },
-      "test_data_present": {
-        "flag": "-t",
-        "value": true
+      "data_present": {
+        "flag": "-d",
+        "value": "asr/wav"
       },
       "num_processors": {
         "flag": "-j",
-        "value": 4
+        "value": 8
       },
       "non_vanilla_compute_cmvn_stats_hyperparameters": {
         "flag": "-q",
