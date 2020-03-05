@@ -150,10 +150,13 @@ kaldi/kaldiwin_vs*
 
 keras_asa/audio
 keras_asa/opensmile_data
+keras_asa/bin/logs/*
+keras_asa/bin/.ipynb_checkpoints/*
+keras_asa/data
 
 # audio and data files
 *.wav
 *.csv
-*.txt
 *.xlsc
 *.jpg
+
