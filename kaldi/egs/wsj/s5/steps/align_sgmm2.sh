@@ -27,7 +27,7 @@ transform_dir=  # directory to find fMLLR transforms in.
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ${KALDI_PATH}/path.sh ] && . ${KALDI_PATH}/path.sh # source the path.
-. ${KALDI_PATH}/utils/parse_options.sh || exit 1;
+. utils/parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
    echo "usage: steps/align_sgmm2.sh <data-dir> <lang-dir> <src-dir> <align-dir>"
