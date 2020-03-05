@@ -156,7 +156,6 @@ keras_asa/data
 # audio and data files
 *.wav
 *.csv
-*.txt
 *.xlsc
 *.jpg
 .ipynb*
