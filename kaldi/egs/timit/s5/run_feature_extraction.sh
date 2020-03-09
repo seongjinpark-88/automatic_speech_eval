@@ -63,7 +63,7 @@ printf "\n"
 #    utils/fix_data_dir.sh ${dir}
 
 # make mfccs
-steps/make_mfcc.sh --nj ${num_processors} \
+./steps/make_mfcc.sh --nj ${num_processors} \
     --mfcc-config ${mfcc_config} \
     data/${data_dir} \
     exp/make_mfcc/${data_dir} \
@@ -71,7 +71,7 @@ steps/make_mfcc.sh --nj ${num_processors} \
     || (printf "\n####\n#### ERROR: make_mfcc.sh \n####\n\n" && exit 1);
 
 # compute cmvn stats
-steps/compute_cmvn_stats.sh \
+./steps/compute_cmvn_stats.sh \
     ${non_vanilla_compute_cmvn_stats_hyperparameters} \
     data/${data_dir} \
     exp/make_mfcc/${data_dir} \
