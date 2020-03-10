@@ -4,7 +4,7 @@ FROM ubuntu:16.04
 MAINTAINER Seongjin Park
 
 # ENV and ARG variables
-ARG HOME=/home/seongjinpark/research/git_repo/
+ARG HOME=/User/seongjinpark/PhD/Diss/
 ENV SHELL=/bin/bash
 ENV GIT_PATH=${HOME}/automatic_speech_eval/
 ENV KALDI_PATH=${GIT_PATH}/kaldi/

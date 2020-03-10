@@ -1,4 +1,4 @@
-with open("../results/fluency_data.csv", "r") as f:
+with open("../results/mfcc_10CV_fluency.txt", "r") as f:
 	data = f.readlines()
 
 
@@ -8,9 +8,9 @@ CHN = ["S02", "S04", "S21", "S22", "S26"]
 
 
 for i in range(len(data)):
-	(true, title, filename) = data[i].rstrip().split(",")
+	(CV, stimuli, true, pred) = data[i].rstrip().split("\t")
 
-	(subject, filename) = title.split("_")
+	(subject, filename) = stimuli.split("_")
 
 	if subject in KOR:
 		language = "KOR"
@@ -19,6 +19,6 @@ for i in range(len(data)):
 	else:
 		language = "CHN"
 
-	result = "%s\t%s\t%s\t%s" % (true, language, title, filename)
+	result = "%s\t%s\t%s\t%s\t%s" % (CV, stimuli, language, true, pred)
 
 	print(result)
