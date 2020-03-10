@@ -3,11 +3,21 @@
 import os
 import numpy as np
 import pandas as pd
+import pickle
+import random
+import pprint
+
+# set seed for reproducibility
+seed = 888
+random.seed(seed)
+np.random.seed(seed)
 
 import keras
 from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten
+from keras import optimizers
 from keras.layers import Conv2D, MaxPooling2D
+from sklearn.metrics import classification_report
 
 #todo: finish data prep code, scaffold NN code in class AdaptiveModel
 #todo: ensure that we can actually get the feature sets we want -- work on this
@@ -103,16 +113,102 @@ class AdaptiveModel:
     """
     Should allow for input of 1, 2, or all 3 types of data;
     todo: should all types be handled with the same architecture?
+    Assumes that the y for each data point is the FINAL ELEMENT of the vector
     """
-    def __init__(self, data, data_size):
+    def __init__(self, data, data_size, outpath):
         self.data = data
         self.data_size = data_size
+        self.save_path = outpath
         self.model = Sequential()
 
-    def define_model(self, n_hidden=1, act='relu', output_act='softmax'):
+    def split_data(self, train=0.7, dev=0.15):
+        """
+        Split the data into training, dev and testing folds.
+        The params specify proportion of data in train and dev.
+        Test data proportion is 1 - (train + dev).
+        """
+        np.random.permutation(self.data)
+        total_length = self.data_size[0]
+        train_length = round(total_length * train)
+        dev_length = round(total_length * dev)
+
+        trainset = self.data[:train_length]
+        devset = self.data[train_length:dev_length]
+        testset = self.data[dev_length:]
+
+        trainX = [item[:-1] for item in trainset]
+        trainy = [item[-1] for item in trainset]
+        valX = [item[:-1] for item in devset]
+        valy = [item[-1] for item in devset]
+        testX = [item[:-1] for item in testset]
+        testy = [item[-1] for item in testset]
+
+        return trainX, trainy, valX, valy, testX, testy
+
+    def save_data(self, trainX, trainy, valX, valy, testX, testy):
+        # save data folds created above
+        pickle.dump(trainX, open("X_train.h5", 'w'))
+        pickle.dump(trainy, open("y_train.h5", 'w'))
+        pickle.dump(valX, open("X_val.h5", 'w'))
+        pickle.dump(valy, open("y_val.h5", 'w'))
+        pickle.dump(testX, open("X_test.h5", 'w'))
+        pickle.dump(testy, open("y_test.h5", 'w'))
+
+    def load_existing_data(self, train_X_file, train_y_file, val_X_file, val_y_file,
+                           test_X_file, test_y_file):
+        """
+        Load existing files; all files should be in h5 format in the save path.
+        """
+        trainX = pickle.load("{0}/{1}".format(self.save_path, train_X_file))
+        trainy = pickle.load("{0}/{1}".format(self.save_path, train_y_file))
+        valX = pickle.load("{0}/{1}".format(self.save_path, val_X_file))
+        valy = pickle.load("{0}/{1}".format(self.save_path, val_y_file))
+        testX = pickle.load("{0}/{1}".format(self.save_path, test_X_file))
+        testy = pickle.load("{0}/{1}".format(self.save_path, test_y_file))
+        return trainX, trainy, valX, valy, testX, testy
+
+    def define_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
+                     n_connected_units=25, l_rate = 0.001, beta_1=0.9, beta_2=0.999,
+                     act='relu', output_act='softmax',loss_fx='mean_squared_error'):
         """
         Initialize the model
-        n_hidden: the number of hidden layers
+        n_lstm:                 number of lstm layers
+        n_lstm_units:           number of lstm cells in each layer
+        dropout:                dropout rate in lstm layers
+        n_connected:            the number of fully connected layers
+        n_connected_units:      number of cells in connected layers
+        beta_1:                 value of beta 1 for Adam
+        beta_2:                 value of beta 2 for Adam
+        act:                    the activation function in lstm + dense layers
+        output_act:             the activation function in the final layer
         """
-        self.model.add(Dense(25, input_dim=self.data_size[1], activation=act))
+        # add all the hidden layers
+        while n_lstm > 0:
+            self.model.add(LSTM(n_lstm_units, input_dim=self.data_size[1],
+                                activation=act, dropout=dropout))
+            n_lstm -= 1
+        # add the connected layers
+        while n_connected > 0:
+            self.model.add(Dense(n_connected_units, input_dim=self.data_size[1],
+                                 activation=act))
+            n_connected -= 1
+        # add the final layer with output activation
         self.model.add(Dense(7, activation=output_act))
+        # set an optimiser -- adam with default param values
+        opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
+        # compile the model
+        self.model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+
+    def train_and_predict(self, trainX, trainy, valX, valy, batch=32, num_epochs=100):
+        """
+        Train the model
+        batch: minibatch size
+        """
+        # fit the model to the data
+        self.model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True)
+        # get predictions on the dev set
+        y_preds = self.model.predict(valX, batch_size=batch)
+        pprint.pprint(classification_report(valy, y_preds))
+
+    def save_model(self, m_name='best_model.h5'):
+        self.model.save(m_name)
