@@ -24,7 +24,7 @@ data_2_num = total_num_stim - data_1_num
 
 subject_val_data1 = defaultdict(float)
 subject_val_data2 = defaultdict(float)
-data1_stim = []
+data_stim = []
 
 for i in range(1, len(data_1)):
 
@@ -35,7 +35,7 @@ for i in range(1, len(data_1)):
 		stimuli = line[-4]
 
 		if stimuli in val_list:
-			data1_stim.append(stimuli)
+			data_stim.append(stimuli)
 			if int(score) >= 4:
 				subject_val_data1[sub_id] += 1
 
@@ -48,6 +48,7 @@ for i in range(1, len(data_2)):
 		stimuli = line[-4]
 
 		if stimuli in val_list:
+			data_stim.append(stimuli)
 			if int(score) >= 4:
 				subject_val_data2[sub_id] += 1
 
@@ -59,4 +60,6 @@ from pprint import pprint
 pprint(subject_val_data1)
 pprint(subject_val_data2)
 
-
+from collections import Counter
+pprint(Counter(data_stim))
+pprint(len(list(Counter(data_stim).keys())))
