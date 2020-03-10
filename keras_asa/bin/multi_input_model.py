@@ -9,6 +9,9 @@ from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 
+#todo: finish data prep code, scaffold NN code in class AdaptiveModel
+#todo: ensure that we can actually get the feature sets we want -- work on this
+
 
 class GetFeatures:
     """
