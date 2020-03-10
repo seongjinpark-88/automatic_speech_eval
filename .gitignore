@@ -78,6 +78,7 @@ kaldi/egs/*/s*/plp
 kaldi/egs/*/s*/exp
 kaldi/egs/*/s*/data
 kaldi/egs/*/s*/data*
+kaldi/egs/*/s*/.ipynb_checkpoints
 
 # /tools/
 kaldi/tools/ATLAS/
