@@ -11,8 +11,8 @@
 
 # Begin configuration section.
 stage=0
-nj=4
-cmd=run.pl
+nj=8
+cmd=utils/run.pl
 use_graphs=false # use graphs from srcdir
 use_gselect=false # use gselect info from srcdir [regardless, we use
    # Gaussian-selection info, we might have to compute it though.]
@@ -26,7 +26,7 @@ transform_dir=  # directory to find fMLLR transforms in.
 
 echo "$0 $@"  # Print the command line for logging
 
-[ -f ${KALDI_PATH}/path.sh ] && . ${KALDI_PATH}/path.sh # source the path.
+[ -f ${KALDI_PATH}/path.sh ] && . path.sh # source the path.
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then

@@ -82,4 +82,4 @@ printf "Timestamp in HH:MM:SS (24 hour format)\n";
 date +%T
 printf "\n"
 
-python ${KALDI_PATH}/utils/parse_config.py $1 $0 > mfcc/kaldi_config_args.json
+python ${KALDI_PATH}/egs/timit/s5/utils/parse_config.py $1 $0 > mfcc/kaldi_config_args.json
