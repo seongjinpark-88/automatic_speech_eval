@@ -1,6 +1,6 @@
 # prepare model that accepts multiple types of input
 
-import os
+import os, sys
 import numpy as np
 import pandas as pd
 import pickle
@@ -30,27 +30,56 @@ class GetFeatures:
     Takes input files and gets segmental and/or suprasegmental features
     Current features extracted: XXXX, YYYY, ZZZZ
     """
-    def __init__(self, audio_path, opensmile_path):
+    def __init__(self, audio_path, opensmile_path, save_path):
         self.apath = audio_path
         self.smilepath = opensmile_path
-        self.supra_name = None
-        self.segment_name = None
+        self.savepath = save_path
+        self.supra_name = None # todo: delete?
+        self.segment_name = None # todo: delete?
 
-    def get_features(self, output_name, supra=True):
+    def get_features(self, supra=True):
         """
         Get the set of phonological/phonetic features
         """
+        # for file in directory
         for f in os.listdir(self.apath):
+            # get all wav files
             if f.endswith('.wav'):
+                wavname = f.split('.')[0]
+                # extract features
                 # todo: replace config files with the appropriate choice
                 if supra is True:
                     os.system("{0}/SMILExtract -C {0}/config/IS10_paraling.conf -I {1}/{2}\
-                          -csvoutput {3}".format(self.smilepath, self.apath, f, output_name))
-                    self.segment_name = output_name
+                          -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
+                                                            self.savepath, wavname))
+                    # self.supra_name = output_name # todo: delete?
                 else:
-                    os.system("{0}/SMILExtract -C {0}/config/IS09_paraling.conf -I {1}/{2}\
-                          -csvoutput {3}".format(self.smilepath, self.apath, f, output_name))
-                    self.supra_name = output_name
+                    os.system("{0}/SMILExtract -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                          -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
+                                                            self.savepath, wavname))
+                    # self.segment_name = output_name # todo: delete?
+                # create a holder for features
+                #feature_set = np.empty((0, 0))
+                feature_set = []
+                # iterate through csv files created by openSMILE
+                for csvfile in os.listdir(self.savepath):
+                    if csvfile.endswith('.csv'):
+                        # get data from these files
+                        csv_data = pd.read_csv("{0}/{1}".format(self.savepath, csvfile), sep=';')
+                        csv_data = csv_data.drop('name', axis=1).to_numpy().tolist()
+                        # pprint.pprint(csv_data)
+
+                        # add it to the set of features
+                        feature_set.append(csv_data)
+                        #feature_set = np.concatenate((feature_set, csv_data), axis=0)
+                        #pprint.pprint(feature_set)
+
+                # this is a hack--not beautiful
+                # sets this as an np array composed of 2d python arrays of various (size x 33)
+                feature_set = np.array(feature_set)
+                # return the set of features
+                return feature_set
+
 
     def get_select_cols(self, cols):
         """
