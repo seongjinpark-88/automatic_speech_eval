@@ -19,6 +19,7 @@ from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten
 from keras import optimizers
 from keras.layers import Conv2D, MaxPooling2D
 from sklearn.metrics import classification_report
+import tensorflow as tf
 
 # todo: finish data prep code, test on phonetic features!
 # todo: ensure that we can actually get the feature sets we want -- work on this
@@ -37,7 +38,22 @@ class GetFeatures:
         self.supra_name = None # todo: delete?
         self.segment_name = None # todo: delete?
 
-    def get_features(self, supra=True):
+    def get_ys_dict(self, ypath, speaker="S07"):
+        """
+        get the set of y values for the data;
+        these come from a csv with 3 cols:
+        stimulus, speaker, average_score
+        ypath: the path to the csv, INCLUDING file name
+        """
+        ys = {}
+        with open(ypath, 'r') as yfile:
+            for line in yfile:
+                line = line.strip().split(",")
+                if line[1] == speaker:
+                    ys[line[0]] = line[2]
+        return ys
+
+    def get_features_dict(self, supra=True):
         """
         Get the set of phonological/phonetic features
         """
@@ -58,27 +74,47 @@ class GetFeatures:
                           -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                             self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
+
                 # create a holder for features
-                #feature_set = np.empty((0, 0))
-                feature_set = []
+                feature_set = {}
+
                 # iterate through csv files created by openSMILE
                 for csvfile in os.listdir(self.savepath):
                     if csvfile.endswith('.csv'):
+                        csv_name = csvfile.split(".")[0]
                         # get data from these files
                         csv_data = pd.read_csv("{0}/{1}".format(self.savepath, csvfile), sep=';')
                         csv_data = csv_data.drop('name', axis=1).to_numpy().tolist()
                         # pprint.pprint(csv_data)
 
                         # add it to the set of features
-                        feature_set.append(csv_data)
-                        #feature_set = np.concatenate((feature_set, csv_data), axis=0)
-                        #pprint.pprint(feature_set)
+                        feature_set[csv_name] = csv_data
+                        # feature_set.append(csv_data)
+                        # feature_set = np.concatenate((feature_set, csv_data), axis=0)
+                        # pprint.pprint(feature_set)
 
                 # this is a hack--not beautiful
                 # sets this as an np array composed of 2d python arrays of various (size x 33)
-                feature_set = np.array(feature_set)
+                # feature_set = np.array(feature_set)
                 # return the set of features
                 return feature_set
+
+    def zip_feats_and_ys(self, feats_dict, ys_dict):
+        """
+        takes the created features dict, ys dit and combines them
+        only takes data that has existing x values
+        also adds zero padding to the features
+        """
+        for item in sorted(feats_dict.keys()):
+            if item not in ys_dict.keys():
+                feats_dict.pop(item)
+        feats_list = [feats_dict[item] for item in sorted(feats_dict)]
+        # print(feats_list[0])
+        ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
+        padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
+                                                                         dtype='float32')
+        # print(ys_list[0])
+        return zip(padded_feats_list, ys_list)
 
 
     def get_select_cols(self, cols):
@@ -164,7 +200,7 @@ class AdaptiveModel:
     """
     Should allow for input of 1, 2, or all 3 types of data;
     todo: should all types be handled with the same architecture?
-    Assumes that the y for each data point is the FINAL ELEMENT of the vector
+    Assumes that that x and y have been zipped to form param data
     Right now, this is agnostic to type of data--assumes concatenated elements
     todo: we want to have models for the following
             raw RNN, phonetic RNN, phonol MLP
@@ -175,33 +211,38 @@ class AdaptiveModel:
             timestamped features better for RNN (phonetic LLDs)
             could try this OR high level vector when combining
     """
-    def __init__(self, data, data_size, outpath):
+    def __init__(self, data, data_shape, outpath):
         self.data = data
-        self.data_size = data_size
+        self.data_shape = data_shape
         self.save_path = outpath
         self.model = Sequential()
 
-    def split_data(self, train=0.7, dev=0.15):
+    def split_data(self, train=0.7, test=0.15):
         """
         Split the data into training, dev and testing folds.
         The params specify proportion of data in train and dev.
-        Test data proportion is 1 - (train + dev).
+        Dev data proportion is 1 - (train + test).
+        Assumes data is zipped x & y
         """
-        np.random.permutation(self.data)
-        total_length = self.data_size[0]
+        random.shuffle(self.data)
+        total_length = self.data_shape[0]
         train_length = round(total_length * train)
-        dev_length = round(total_length * dev)
+        test_length = round(total_length * test)
 
         trainset = self.data[:train_length]
-        devset = self.data[train_length:dev_length]
-        testset = self.data[dev_length:]
+        testset = self.data[train_length:train_length + test_length]
+        devset = self.data[train_length + test_length:]
 
-        trainX = [item[:-1] for item in trainset]
-        trainy = [item[-1] for item in trainset]
-        valX = [item[:-1] for item in devset]
-        valy = [item[-1] for item in devset]
-        testX = [item[:-1] for item in testset]
-        testy = [item[-1] for item in testset]
+        trainX, trainy = zip(*trainset)
+        valX, valy = zip(*devset)
+        testX, testy = zip(*testset)
+
+        # trainX = [item[:-1] for item in trainset]
+        # trainy = [item[-1] for item in trainset]
+        # valX = [item[:-1] for item in devset]
+        # valy = [item[-1] for item in devset]
+        # testX = [item[:-1] for item in testset]
+        # testy = [item[-1] for item in testset]
 
         return trainX, trainy, valX, valy, testX, testy
 
@@ -243,7 +284,7 @@ class AdaptiveModel:
         output_size:            the length of predictions vector; default is 7
         """
         while n_connected > 0:
-            self.model.add(Dense(n_connected_units, input_dim=self.data_size[1],
+            self.model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
                                  activation=act, dropout=dropout))
             n_connected -= 1
         # add the final layer with output activation
@@ -272,12 +313,12 @@ class AdaptiveModel:
         """
         # add all the hidden layers
         while n_lstm > 0:
-            self.model.add(Bidirectional(LSTM(n_lstm_units, input_dim=self.data_size[1],
+            self.model.add(Bidirectional(LSTM(n_lstm_units, input_dim=self.data_shape[1],
                                               activation=act, dropout=dropout)))
             n_lstm -= 1
         # add the connected layers
         while n_connected > 0:
-            self.model.add(Dense(n_connected_units, input_dim=self.data_size[1],
+            self.model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
                                  activation=act))
             n_connected -= 1
         # add the final layer with output activation
