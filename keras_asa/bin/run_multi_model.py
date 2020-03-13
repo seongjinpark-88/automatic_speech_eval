@@ -39,6 +39,8 @@ adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../../SJP_JC_
 # split data into datasets
 trainX, trainy, valX, valy, testX, testy = adapt.split_data()
 # print(testX)
+
+# uncomment the following lines to save and load folds
 # adapt.save_data(trainX, trainy, valX, valy, testX, testy)
 # trainX, trainy, valX, valy, testX, testy = adapt.load_existing_data("X_train.npy", "y_train.npy",
 #                                                                     "X_val.npy", "y_val.npy",
@@ -46,4 +48,4 @@ trainX, trainy, valX, valy, testX, testy = adapt.split_data()
 
 # try out lstm model
 adapt.lstm_model()
-adapt.train_and_predict(trainX, trainy, valX, valy)
+adapt.train_and_predict(trainX, trainy, valX, valy, batch=5)

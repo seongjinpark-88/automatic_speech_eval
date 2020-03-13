@@ -15,8 +15,8 @@ np.random.seed(seed)
 
 import keras
 from keras.models import Sequential, Model
-from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten
-from keras import optimizers
+from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten, TimeDistributed, Masking
+from keras import optimizers, Input
 from keras.layers import Conv2D, MaxPooling2D
 from sklearn.metrics import classification_report
 import tensorflow as tf
@@ -230,21 +230,21 @@ class AdaptiveModel:
         """
         data = list(zip(self.xs, self.ys))
         random.shuffle(data)
-        print(data)
+        # print(data)
         #random.shuffle(list(self.data))
         total_length = self.data_shape[0]
-        print(total_length)
+        # print(total_length)
         train_length = round(total_length * train)
-        print(train_length)
+        # print(train_length)
         test_length = round(total_length * test)
-        print(test_length)
+        # print(test_length)
 
-        print(self.data)
+        # print(self.data)
 
         xs, ys = list(zip(*self.data))
 
         trainX = np.array(xs[:train_length])
-        print(trainX)
+        # print(trainX)
         trainy = np.array(ys[:train_length])
         testX = np.array(xs[train_length:train_length + test_length])
         testy = np.array(ys[train_length:train_length + test_length])
@@ -348,21 +348,35 @@ class AdaptiveModel:
         output_size:            the length of predictions vector; default is 7
         """
         # add all the hidden layers
+        # print(self.data_shape[1:])
+        # sys.exit(1)
+        # inputs = Input(shape=self.data_shape[1:])
+        #self.model.add(Input(shape=self.data_shape[1:]))
+        self.model.add(Masking(mask_value=0.0, input_shape=self.data_shape[1:]))
+        self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+                                          activation=act, dropout=dropout, return_sequences=True)))
+        n_lstm -= 1
+        print("N LSTM layers left equals: " + str(n_lstm))
         while n_lstm > 0:
-            self.model.add(Bidirectional(LSTM(n_lstm_units, input_dim=self.data_shape[1],
-                                              activation=act, dropout=dropout)))
+            self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+                                              activation=act, dropout=dropout, return_sequences=True)))
             n_lstm -= 1
+        print("THE LSTM layers completed")
         # add the connected layers
         while n_connected > 0:
-            self.model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
-                                 activation=act))
+            self.model.add(TimeDistributed(Dense(n_connected_units,
+                                                 activation=act)))
             n_connected -= 1
+        self.model.add(Flatten())
+        print("The connected layer worked")
         # add the final layer with output activation
-        self.model.add(Dense(output_size, activation=output_act))
+        self.model.add(TimeDistributed(Dense(output_size, activation=output_act)))
         # set an optimiser -- adam with default param values
+        print("The output layer worked")
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
         self.model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+        print("Model compiled successfully")
 
     def final_layers(self, n_connected=1, n_connected_units=25, l_rate=0.001,
                   dropout=0.2, beta_1=0.9, beta_2=0.999, act='relu',
@@ -382,7 +396,7 @@ class AdaptiveModel:
         num_epochs:         number of epochs
         """
         # fit the model to the data
-        self.model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True)
+        self.model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True, class_weight=None)
         # get predictions on the dev set
         y_preds = self.model.predict(valX, batch_size=batch)
         pprint.pprint(classification_report(valy, y_preds))
