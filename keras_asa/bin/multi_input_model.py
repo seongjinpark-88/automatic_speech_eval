@@ -200,7 +200,7 @@ class AdaptiveModel:
     """
     Should allow for input of 1, 2, or all 3 types of data;
     todo: should all types be handled with the same architecture?
-    Assumes that that x and y have been zipped to form param data
+    Assumes that that x and y have been aligned
     Right now, this is agnostic to type of data--assumes concatenated elements
     todo: we want to have models for the following
             raw RNN, phonetic RNN, phonol MLP
@@ -211,8 +211,12 @@ class AdaptiveModel:
             timestamped features better for RNN (phonetic LLDs)
             could try this OR high level vector when combining
     """
-    def __init__(self, data, data_shape, outpath):
-        self.data = data
+    def __init__(self, xdata, ydata, data_shape, outpath):
+        self.data = zip(xdata, ydata)
+        self.xs = xdata
+        self.ys = ydata
+        #self.data = data
+        #self.xs, self.ys = zip(*data)
         self.data_shape = data_shape
         self.save_path = outpath
         self.model = Sequential()
@@ -224,18 +228,36 @@ class AdaptiveModel:
         Dev data proportion is 1 - (train + test).
         Assumes data is zipped x & y
         """
-        random.shuffle(self.data)
+        data = list(zip(self.xs, self.ys))
+        random.shuffle(data)
+        print(data)
+        #random.shuffle(list(self.data))
         total_length = self.data_shape[0]
+        print(total_length)
         train_length = round(total_length * train)
+        print(train_length)
         test_length = round(total_length * test)
+        print(test_length)
 
-        trainset = self.data[:train_length]
-        testset = self.data[train_length:train_length + test_length]
-        devset = self.data[train_length + test_length:]
+        print(self.data)
 
-        trainX, trainy = zip(*trainset)
-        valX, valy = zip(*devset)
-        testX, testy = zip(*testset)
+        xs, ys = list(zip(*self.data))
+
+        trainX = np.array(xs[:train_length])
+        print(trainX)
+        trainy = np.array(ys[:train_length])
+        testX = np.array(xs[train_length:train_length + test_length])
+        testy = np.array(ys[train_length:train_length + test_length])
+        valX = np.array(xs[train_length + test_length:])
+        valy = np.array(ys[train_length + test_length:])
+
+        # trainset = self.data[:train_length]
+        # testset = self.data[train_length:train_length + test_length]
+        # devset = self.data[train_length + test_length:]
+        #
+        # trainX, trainy = zip(*trainset)
+        # valX, valy = zip(*devset)
+        # testX, testy = zip(*testset)
 
         # trainX = [item[:-1] for item in trainset]
         # trainy = [item[-1] for item in trainset]
@@ -248,24 +270,38 @@ class AdaptiveModel:
 
     def save_data(self, trainX, trainy, valX, valy, testX, testy):
         # save data folds created above
-        pickle.dump(trainX, open("X_train.h5", 'w'))
-        pickle.dump(trainy, open("y_train.h5", 'w'))
-        pickle.dump(valX, open("X_val.h5", 'w'))
-        pickle.dump(valy, open("y_val.h5", 'w'))
-        pickle.dump(testX, open("X_test.h5", 'w'))
-        pickle.dump(testy, open("y_test.h5", 'w'))
+        np.save("{0}/X_train".format(self.save_path), trainX)
+        np.save("{0}/y_train".format(self.save_path), trainy)
+        np.save("{0}/X_val".format(self.save_path), valX)
+        np.save("{0}/y_val".format(self.save_path), valy)
+        np.save("{0}/X_test".format(self.save_path), testX)
+        np.save("{0}/y_test".format(self.save_path), testy)
+
+        # pickle.dump(trainX, open("{0}/X_train.h5".format(self.save_path), 'wb'))
+        # pickle.dump(trainy, open("{0}/y_train.h5".format(self.save_path), 'wb'))
+        # pickle.dump(valX, open("{0}/X_val.h5".format(self.save_path), 'wb'))
+        # pickle.dump(valy, open("{0}/y_val.h5".format(self.save_path), 'wb'))
+        # pickle.dump(testX, open("{0}/X_test.h5".format(self.save_path), 'wb'))
+        # pickle.dump(testy, open("{0}/y_test.h5".format(self.save_path), 'wb'))
 
     def load_existing_data(self, train_X_file, train_y_file, val_X_file, val_y_file,
                            test_X_file, test_y_file):
         """
-        Load existing files; all files should be in h5 format in the save path.
+        Load existing files; all files should be in .npy format in the save path.
         """
-        trainX = pickle.load("{0}/{1}".format(self.save_path, train_X_file))
-        trainy = pickle.load("{0}/{1}".format(self.save_path, train_y_file))
-        valX = pickle.load("{0}/{1}".format(self.save_path, val_X_file))
-        valy = pickle.load("{0}/{1}".format(self.save_path, val_y_file))
-        testX = pickle.load("{0}/{1}".format(self.save_path, test_X_file))
-        testy = pickle.load("{0}/{1}".format(self.save_path, test_y_file))
+        trainX = np.load("{0}/{1}".format(self.save_path, train_X_file))
+        trainy = np.load("{0}/{1}".format(self.save_path, train_y_file))
+        valX = np.load("{0}/{1}".format(self.save_path, val_X_file))
+        valy = np.load("{0}/{1}".format(self.save_path, val_y_file))
+        testX = np.load("{0}/{1}".format(self.save_path, test_X_file))
+        testy = np.load("{0}/{1}".format(self.save_path, test_y_file))
+
+        # trainX = pickle.load(open("{0}/{1}".format(self.save_path, train_X_file, "rb")))
+        # trainy = pickle.load(open("{0}/{1}".format(self.save_path, train_y_file), "rb"))
+        # valX = pickle.load(open("{0}/{1}".format(self.save_path, val_X_file), "rb"))
+        # valy = pickle.load(open("{0}/{1}".format(self.save_path, val_y_file), "rb"))
+        # testX = pickle.load(open("{0}/{1}".format(self.save_path, test_X_file), "rb"))
+        # testy = pickle.load(open("{0}/{1}".format(self.save_path, test_y_file), "rb"))
         return trainX, trainy, valX, valy, testX, testy
 
     def mlp_model(self, n_connected=2, n_connected_units=25, l_rate=0.001,
