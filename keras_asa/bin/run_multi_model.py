@@ -3,10 +3,14 @@
 import os, sys
 import pprint
 import numpy as np
+from keras import Sequential
+from keras.layers import Embedding, Bidirectional, LSTM, Dropout, Dense
+
 import multi_input_model as modeler
 
 # create an instance of GetFeatures class
-phonetic_test = modeler.GetFeatures("../../SJP_JC_Audio/S07/wav", "~/opensmile-2.3.0", "../../SJP_JC_Audio/output")
+phonetic_test = modeler.GetFeatures("../../SJP_JC_Audio/wavs", "~/opensmile-2.3.0", "../../SJP_JC_Audio/output")
+# phonetic_test.copy_files_to_single_directory("../../SJP_JC_Audio/all_speakers")
 acoustic_features = phonetic_test.get_features_dict(supra=False)
 
 # read in y data
@@ -38,7 +42,9 @@ adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../../SJP_JC_
 
 # split data into datasets
 trainX, trainy, valX, valy, testX, testy = adapt.split_data()
-# print(testX)
+# pprint.pprint(testX[0])
+# print(testX[0].shape)
+# sys.exit(1)
 
 # uncomment the following lines to save and load folds
 # adapt.save_data(trainX, trainy, valX, valy, testX, testy)
@@ -47,5 +53,40 @@ trainX, trainy, valX, valy, testX, testy = adapt.split_data()
 #                                                                     "X_test.npy", "y_test.npy")
 
 # try out lstm model
-adapt.lstm_model()
+
+max_features = trainX.shape[2]
+print(max_features)
+maxlen = trainX.shape[1]
+print(maxlen)
+# print(trainX.shape)
+# print(trainy.shape)
+# sys.exit(1)
+
+##### TRYING SOMETHING
+# model = Sequential()
+# model.add(Embedding(max_features, 128, input_length=maxlen))
+# model.add(Bidirectional(LSTM(64)))
+# model.add(Dropout(0.5))
+# model.add(Dense(1, activation='sigmoid'))
+#
+# # try using different optimizers and different optimizer configs
+# model.compile('adam', 'mean_squared_error', metrics=['accuracy'])
+#
+# print('Train...')
+# model.fit(trainX, trainy,
+#           batch_size=5,
+#           epochs=4,
+#           validation_data=[testX, testy])
+#
+# model.summary()
+# sys.exit(1)
+
+adapt.lstm_model(output_size=1)
+
+# adapt.model.fit(trainX, trainy, valX, valy)
+# adapt.mode.summary()
+#
+# sys.exit(1)
+
 adapt.train_and_predict(trainX, trainy, valX, valy, batch=5)
+adapt.model.summary()

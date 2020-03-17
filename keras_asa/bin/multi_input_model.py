@@ -9,6 +9,8 @@ import pprint
 import warnings
 
 # set seed for reproducibility
+from keras.engine import Layer
+
 seed = 888
 random.seed(seed)
 np.random.seed(seed)
@@ -52,6 +54,19 @@ class GetFeatures:
                 if line[1] == speaker:
                     ys[line[0]] = line[2]
         return ys
+    #
+    # def copy_files_to_single_directory(self, single_dir_path):
+    #     """
+    #     Copy all files for different speakers to a single directory
+    #     single_dir_path : full path
+    #     """
+    #     if not os.path.isdir(single_dir_path):
+    #         os.system("mkdir {0}".format(single_dir_path))
+    #     # for f in os.scandir(self.apath):
+    #     #     if f.is_dir() and str(f).startswith("S"):
+    #     #         print(f)
+    #     os.system("cp -r {0}/S*/wav/* {2}/".format(self.apath, single_dir_path))
+    #     self.apath = single_dir_path
 
     def get_features_dict(self, supra=True):
         """
@@ -75,29 +90,29 @@ class GetFeatures:
                                                             self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
 
-                # create a holder for features
-                feature_set = {}
+        # create a holder for features
+        feature_set = {}
 
-                # iterate through csv files created by openSMILE
-                for csvfile in os.listdir(self.savepath):
-                    if csvfile.endswith('.csv'):
-                        csv_name = csvfile.split(".")[0]
-                        # get data from these files
-                        csv_data = pd.read_csv("{0}/{1}".format(self.savepath, csvfile), sep=';')
-                        csv_data = csv_data.drop('name', axis=1).to_numpy().tolist()
-                        # pprint.pprint(csv_data)
+        # iterate through csv files created by openSMILE
+        for csvfile in os.listdir(self.savepath):
+            if csvfile.endswith('.csv'):
+                csv_name = csvfile.split(".")[0]
+                # get data from these files
+                csv_data = pd.read_csv("{0}/{1}".format(self.savepath, csvfile), sep=';')
+                csv_data = csv_data.drop('name', axis=1).to_numpy().tolist()
+                # pprint.pprint(csv_data)
 
-                        # add it to the set of features
-                        feature_set[csv_name] = csv_data
-                        # feature_set.append(csv_data)
-                        # feature_set = np.concatenate((feature_set, csv_data), axis=0)
-                        # pprint.pprint(feature_set)
+                # add it to the set of features
+                feature_set[csv_name] = csv_data
+                # feature_set.append(csv_data)
+                # feature_set = np.concatenate((feature_set, csv_data), axis=0)
+                # pprint.pprint(feature_set)
 
-                # this is a hack--not beautiful
-                # sets this as an np array composed of 2d python arrays of various (size x 33)
-                # feature_set = np.array(feature_set)
-                # return the set of features
-                return feature_set
+        # this is a hack--not beautiful
+        # sets this as an np array composed of 2d python arrays of various (size x 33)
+        # feature_set = np.array(feature_set)
+        # return the set of features
+        return feature_set
 
     def zip_feats_and_ys(self, feats_dict, ys_dict):
         """
@@ -194,6 +209,24 @@ class PrepareData:
 
     def get_data_size(self):
         return self.concat_data().size()
+
+class NonMasking(Layer):
+    def __init__(self, **kwargs):
+        self.supports_masking = True
+        super(NonMasking, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        input_shape = input_shape
+
+    def compute_mask(self, input, input_mask=None):
+        # do not pass the mask to the next layers
+        return None
+
+    def call(self, x, mask=None):
+        return x
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape
 
 
 class AdaptiveModel:
@@ -330,9 +363,59 @@ class AdaptiveModel:
         # compile the model
         self.model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
 
+    # def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
+    #                  n_connected_units=25, l_rate = 0.001, beta_1=0.9, beta_2=0.999,
+    #                  act='relu', output_act='softmax', loss_fx='mean_squared_error',
+    #                  output_size=7):
+    #     """
+    #     Initialize the LSTM-based model
+    #     n_lstm:                 number of lstm layers
+    #     n_lstm_units:           number of lstm cells in each layer
+    #     dropout:                dropout rate in lstm layers
+    #     n_connected:            the number of fully connected layers
+    #     n_connected_units:      number of cells in connected layers
+    #     beta_1:                 value of beta 1 for Adam
+    #     beta_2:                 value of beta 2 for Adam
+    #     act:                    the activation function in lstm + dense layers
+    #     output_act:             the activation function in the final layer
+    #     output_size:            the length of predictions vector; default is 7
+    #     """
+    #     # add all the hidden layers
+    #     print(self.data_shape[1:])
+    #     # sys.exit(1)
+    #     # inputs = Input(shape=self.data_shape[1:])
+    #     #self.model.add(Input(shape=self.data_shape[1:]))
+    #     self.model.add(Masking(mask_value=0.0, input_shape=self.data_shape[1:]))
+    #     self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+    #                                       activation=act, dropout=dropout, return_sequences=True)))
+    #     n_lstm -= 1
+    #     print("N LSTM layers left equals: " + str(n_lstm))
+    #     while n_lstm > 0:
+    #         self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+    #                                           activation=act, dropout=dropout, return_sequences=True)))
+    #         n_lstm -= 1
+    #     print("THE LSTM layers completed")
+    #     # add the connected layers
+    #     while n_connected > 0:
+    #         self.model.add(TimeDistributed(Dense(n_connected_units,
+    #                                              activation=act)))
+    #         n_connected -= 1
+    #     # self.model.add(NonMasking())
+    #     # self.model.add(Flatten())
+    #     print("The connected layer worked")
+    #     # add the final layer with output activation
+    #     self.model.add(TimeDistributed(Dense(output_size, activation=output_act))) #,
+    #                                          # input_shape=(self.data_shape[0],))))
+    #     # set an optimiser -- adam with default param values
+    #     print("The output layer worked")
+    #     opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
+    #     # compile the model
+    #     self.model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+    #     print("Model compiled successfully")
+
     def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
                      n_connected_units=25, l_rate = 0.001, beta_1=0.9, beta_2=0.999,
-                     act='relu', output_act='softmax', loss_fx='mean_squared_error',
+                     act='relu', output_act='linear', loss_fx='mean_squared_error',
                      output_size=7):
         """
         Initialize the LSTM-based model
@@ -348,29 +431,31 @@ class AdaptiveModel:
         output_size:            the length of predictions vector; default is 7
         """
         # add all the hidden layers
-        # print(self.data_shape[1:])
+        print(self.data_shape[1:])
         # sys.exit(1)
         # inputs = Input(shape=self.data_shape[1:])
         #self.model.add(Input(shape=self.data_shape[1:]))
-        self.model.add(Masking(mask_value=0.0, input_shape=self.data_shape[1:]))
+        # self.model.add(Masking(mask_value=0.0, input_shape=self.data_shape[1:]))
         self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
                                           activation=act, dropout=dropout, return_sequences=True)))
         n_lstm -= 1
         print("N LSTM layers left equals: " + str(n_lstm))
         while n_lstm > 0:
             self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
-                                              activation=act, dropout=dropout, return_sequences=True)))
+                                              activation=act, dropout=dropout, return_sequences=False)))
             n_lstm -= 1
         print("THE LSTM layers completed")
         # add the connected layers
         while n_connected > 0:
-            self.model.add(TimeDistributed(Dense(n_connected_units,
-                                                 activation=act)))
+            self.model.add(Dense(n_connected_units, input_shape=(self.data_shape[0],1),
+                                                 activation=act))
             n_connected -= 1
-        self.model.add(Flatten())
+        # self.model.add(NonMasking())
+        # self.model.add(Flatten())
         print("The connected layer worked")
         # add the final layer with output activation
-        self.model.add(TimeDistributed(Dense(output_size, activation=output_act)))
+        self.model.add(Dense(output_size, activation=output_act)) #,
+                                             # input_shape=(self.data_shape[0],))))
         # set an optimiser -- adam with default param values
         print("The output layer worked")
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
@@ -380,7 +465,7 @@ class AdaptiveModel:
 
     def final_layers(self, n_connected=1, n_connected_units=25, l_rate=0.001,
                   dropout=0.2, beta_1=0.9, beta_2=0.999, act='relu',
-                  output_act='softmax', loss_fx='mean_squared_error'):
+                  output_act='linear', loss_fx='mean_squared_error'):
         """
         Initialize the MLP model as that takes output from lstm + mlp models and combines
         """
@@ -395,6 +480,7 @@ class AdaptiveModel:
         batch:              minibatch size
         num_epochs:         number of epochs
         """
+        print(trainX.shape)
         # fit the model to the data
         self.model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True, class_weight=None)
         # get predictions on the dev set
