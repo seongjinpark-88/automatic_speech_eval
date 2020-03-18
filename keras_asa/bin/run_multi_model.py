@@ -5,16 +5,22 @@ import pprint
 import numpy as np
 from keras import Sequential
 from keras.layers import Embedding, Bidirectional, LSTM, Dropout, Dense
+from keras.layers.advanced_activations import LeakyReLU
 
 import multi_input_model as modeler
 
 # create an instance of GetFeatures class
 phonetic_test = modeler.GetFeatures("../../SJP_JC_Audio/wavs", "~/opensmile-2.3.0", "../../SJP_JC_Audio/output")
 # phonetic_test.copy_files_to_single_directory("../../SJP_JC_Audio/all_speakers")
-acoustic_features = phonetic_test.get_features_dict(supra=False)
+# phonetic_test.extract_features(supra=False)
+acoustic_features = phonetic_test.get_features_dict()
 
+# select participants to use
+# speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
+speaker_list = ["S07"]  # for testing
 # read in y data
-y_values = phonetic_test.get_ys_dict("../../SJP_JC_Audio/perception_results/accented_avgs.csv")
+y_values = phonetic_test.get_ys_dict("../../SJP_JC_Audio/perception_results/accented_avgs.csv",
+                                     speaker_list)
 
 # zip x and y data
 zipped = phonetic_test.zip_feats_and_ys(acoustic_features, y_values)
@@ -48,9 +54,9 @@ trainX, trainy, valX, valy, testX, testy = adapt.split_data()
 
 # uncomment the following lines to save and load folds
 # adapt.save_data(trainX, trainy, valX, valy, testX, testy)
-# trainX, trainy, valX, valy, testX, testy = adapt.load_existing_data("X_train.npy", "y_train.npy",
-#                                                                     "X_val.npy", "y_val.npy",
-#                                                                     "X_test.npy", "y_test.npy")
+trainX, trainy, valX, valy, testX, testy = adapt.load_existing_data("X_train.npy", "y_train.npy",
+                                                                    "X_val.npy", "y_val.npy",
+                                                                    "X_test.npy", "y_test.npy")
 
 # try out lstm model
 
@@ -81,12 +87,35 @@ print(maxlen)
 # model.summary()
 # sys.exit(1)
 
-adapt.lstm_model(output_size=1)
+adapt.lstm_model(n_lstm=1, output_size=1, n_lstm_units=10, n_connected_units=5,
+                 act="tanh")  # relu doesn't work with this dataset
 
 # adapt.model.fit(trainX, trainy, valX, valy)
 # adapt.mode.summary()
 #
 # sys.exit(1)
 
-adapt.train_and_predict(trainX, trainy, valX, valy, batch=5)
-adapt.model.summary()
+valy, y_preds = adapt.train_and_predict(trainX, trainy, valX, valy, batch=12)
+
+# print the linear regression and display datapoints
+# from https://github.com/keras-team/keras/issues/7947
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+
+regressor = LinearRegression()
+regressor.fit(valy.reshape(-1,1), y_preds)
+y_fit = regressor.predict(y_preds)
+
+reg_intercept = round(regressor.intercept_[0],4)
+reg_coef = round(regressor.coef_.flatten()[0],4)
+reg_label = "y = " + str(reg_intercept) + "*x +" + str(reg_coef)
+
+plt.scatter(valy, y_preds, color='blue', label= 'data')
+plt.plot(y_preds, y_fit, color='red', linewidth=2, label = 'Linear regression\n'+reg_label)
+plt.title('Linear Regression')
+plt.legend()
+plt.xlabel('observed')
+plt.ylabel('predicted')
+plt.show()
+
+#adapt.model.summary()

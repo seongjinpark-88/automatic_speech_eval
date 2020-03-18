@@ -21,11 +21,26 @@ from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten, TimeDistr
 from keras import optimizers, Input
 from keras.layers import Conv2D, MaxPooling2D
 from sklearn.metrics import classification_report
+from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 
 # todo: finish data prep code, test on phonetic features!
 # todo: ensure that we can actually get the feature sets we want -- work on this
 # todo: rename suprasegmental/segmental to phonological/phonetic, respectively
+
+
+def normalize_data(data):
+    """
+    Normalize the input data to try to avoid NaN output + loss
+    From: https://machinelearningmastery.com/how-to-improve-neural-network-\
+    stability-and-modeling-performance-with-data-scaling/
+    """
+    scaler = MinMaxScaler()
+    # fit and transform in one step
+    normalized = scaler.fit_transform(data)
+    # inverse transform
+    inverse = scaler.inverse_transform(normalized)
+    return inverse
 
 
 class GetFeatures:
@@ -40,7 +55,7 @@ class GetFeatures:
         self.supra_name = None # todo: delete?
         self.segment_name = None # todo: delete?
 
-    def get_ys_dict(self, ypath, speaker="S07"):
+    def get_ys_dict(self, ypath, speaker_list):
         """
         get the set of y values for the data;
         these come from a csv with 3 cols:
@@ -51,7 +66,7 @@ class GetFeatures:
         with open(ypath, 'r') as yfile:
             for line in yfile:
                 line = line.strip().split(",")
-                if line[1] == speaker:
+                if line[1] in speaker_list:
                     ys[line[0]] = line[2]
         return ys
     #
@@ -68,9 +83,9 @@ class GetFeatures:
     #     os.system("cp -r {0}/S*/wav/* {2}/".format(self.apath, single_dir_path))
     #     self.apath = single_dir_path
 
-    def get_features_dict(self, supra=True):
+    def extract_features(self, supra=True):
         """
-        Get the set of phonological/phonetic features
+        Extract the required features in openSMILE
         """
         # for file in directory
         for f in os.listdir(self.apath):
@@ -85,22 +100,31 @@ class GetFeatures:
                                                             self.savepath, wavname))
                     # self.supra_name = output_name # todo: delete?
                 else:
-                    os.system("{0}/SMILExtract -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                    os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
                           -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                             self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
 
+    def get_features_dict(self):
+        """
+        Get the set of phonological/phonetic features
+        """
         # create a holder for features
         feature_set = {}
 
         # iterate through csv files created by openSMILE
         for csvfile in os.listdir(self.savepath):
             if csvfile.endswith('.csv'):
+                # change format to utf-8
+                # os.system("iconv -f US-ASCII -t UTF-* {0} > {0}".format(csvfile)) # didn't work
                 csv_name = csvfile.split(".")[0]
                 # get data from these files
                 csv_data = pd.read_csv("{0}/{1}".format(self.savepath, csvfile), sep=';')
                 csv_data = csv_data.drop('name', axis=1).to_numpy().tolist()
-                # pprint.pprint(csv_data)
+                if "nan" in csv_data or "NaN" in csv_data or "inf" in csv_data:
+                    pprint.pprint(csv_data)
+                    sys.exit(1)
+
 
                 # add it to the set of features
                 feature_set[csv_name] = csv_data
@@ -123,14 +147,14 @@ class GetFeatures:
         for item in sorted(feats_dict.keys()):
             if item not in ys_dict.keys():
                 feats_dict.pop(item)
-        feats_list = [feats_dict[item] for item in sorted(feats_dict)]
+        # normalize feats list
+        feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
         # print(feats_list[0])
         ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
         padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
                                                                          dtype='float32')
         # print(ys_list[0])
         return zip(padded_feats_list, ys_list)
-
 
     def get_select_cols(self, cols):
         """
@@ -209,24 +233,6 @@ class PrepareData:
 
     def get_data_size(self):
         return self.concat_data().size()
-
-class NonMasking(Layer):
-    def __init__(self, **kwargs):
-        self.supports_masking = True
-        super(NonMasking, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        input_shape = input_shape
-
-    def compute_mask(self, input, input_mask=None):
-        # do not pass the mask to the next layers
-        return None
-
-    def call(self, x, mask=None):
-        return x
-
-    def get_output_shape_for(self, input_shape):
-        return input_shape
 
 
 class AdaptiveModel:
@@ -416,7 +422,7 @@ class AdaptiveModel:
     def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
                      n_connected_units=25, l_rate = 0.001, beta_1=0.9, beta_2=0.999,
                      act='relu', output_act='linear', loss_fx='mean_squared_error',
-                     output_size=7):
+                     output_size=1):
         """
         Initialize the LSTM-based model
         n_lstm:                 number of lstm layers
@@ -434,17 +440,23 @@ class AdaptiveModel:
         print(self.data_shape[1:])
         # sys.exit(1)
         # inputs = Input(shape=self.data_shape[1:])
-        #self.model.add(Input(shape=self.data_shape[1:]))
+        # self.model.add(Input(shape=self.data_shape[1:]))
         # self.model.add(Masking(mask_value=0.0, input_shape=self.data_shape[1:]))
-        self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
-                                          activation=act, dropout=dropout, return_sequences=True)))
-        n_lstm -= 1
-        print("N LSTM layers left equals: " + str(n_lstm))
-        while n_lstm > 0:
-            self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
-                                              activation=act, dropout=dropout, return_sequences=False)))
+        if n_lstm > 1:
+            self.model.add(Bidirectional(LSTM(n_lstm_units,
+                                              activation=act, return_sequences=True),
+                                         input_shape=self.data_shape[1:], dropout=dropout, recurrent_dropout=dropout))
             n_lstm -= 1
-        print("THE LSTM layers completed")
+            print("N LSTM layers left equals: " + str(n_lstm))
+            while n_lstm > 0:
+                self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+                                                  activation=act, dropout=dropout, recurrent_dropout=dropout, return_sequences=False)))
+                n_lstm -= 1
+            print("THE LSTM layers completed")
+        else:
+            self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+                                activation=act, dropout=dropout, recurrent_dropout=dropout,
+                                return_sequences=False)))
         # add the connected layers
         while n_connected > 0:
             self.model.add(Dense(n_connected_units, input_shape=(self.data_shape[0],1),
@@ -482,10 +494,16 @@ class AdaptiveModel:
         """
         print(trainX.shape)
         # fit the model to the data
+        # print(trainX[0].shape)
+        # print(trainy.size)
+        # trainy = np.reshape(trainy, (trainy.size, 1))
+
+
         self.model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True, class_weight=None)
         # get predictions on the dev set
         y_preds = self.model.predict(valX, batch_size=batch)
-        pprint.pprint(classification_report(valy, y_preds))
+        #pprint.pprint(classification_report(valy, y_preds))
+        return valy, y_preds
 
     def save_model(self, m_name='best_model.h5'):
         self.model.save(m_name)
