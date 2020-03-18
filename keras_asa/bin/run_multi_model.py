@@ -8,7 +8,15 @@ phonetic_test = modeler.GetFeatures("../../SJP_JC_Audio/wavs", "~/opensmile-2.3.
 # phonetic_test.extract_features()
 
 # get dict with all features for the dataset
-acoustic_features = phonetic_test.get_features_dict()
+acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frameTime',
+                                                                  "pcm_RMSenergy_sma_de","pcm_fftMag_mfcc_sma_de[1]",
+                                                                  "pcm_fftMag_mfcc_sma_de[2]","pcm_fftMag_mfcc_sma_de[3]",
+                                                                  "pcm_fftMag_mfcc_sma_de[4]",
+                                                                  "pcm_fftMag_mfcc_sma_de[5]","pcm_fftMag_mfcc_sma_de[6]",
+                                                                  "pcm_fftMag_mfcc_sma_de[7]","pcm_fftMag_mfcc_sma_de[8]",
+                                                                  "pcm_fftMag_mfcc_sma_de[9]","pcm_fftMag_mfcc_sma_de[10]",
+                                                                  "pcm_fftMag_mfcc_sma_de[11]","pcm_fftMag_mfcc_sma_de[12]",
+                                                                  "pcm_zcr_sma_de","voiceProb_sma_de","F0_sma_de"])
 
 # select participants to use
 speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
@@ -39,9 +47,10 @@ shape = unzipped_feats.shape
 #                                                                     "X_test.npy", "y_test.npy")
 
 # hyperparameter tuning on LSTM model
-n_lstm_units = [10, 20, 50, 100]
-n_connected_units = [5, 10, 20, 50]
-n_lstm = [5, 10, 20]
+n_lstm_units = [5, 10] #[20, 50, 100]  # 10 done
+n_connected_units = [5, 10]  # , 20, 50]
+# n_lstm = [1, 5, 10] # 20 seemed really bad
+n_lstm = [1, 2]
 batch = [32, 64]
 
 # prep pyplot to view the results
@@ -80,5 +89,5 @@ for n_l_u in n_lstm_units:
                 plt.ylim(0, 6)
 
                 plt.title('y vs y-hat {0} lstm units, {1} connected units, {2} lstm layers, batch size {3}'.format(n_l_u, n_c_u, n_l, b))
-                plt.savefig("{0}-{1}-{2}-{3}.png".format(n_l_u, n_c_u, n_l, b))
+                plt.savefig("train-loss_de-dropped_{0}-{1}-{2}-{3}.png".format(n_l_u, n_c_u, n_l, b))
                 plt.clf()
