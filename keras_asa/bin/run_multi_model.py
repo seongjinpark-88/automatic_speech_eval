@@ -30,10 +30,7 @@ unzipped_feats = np.array(list(unzipped_feats))
 shape = unzipped_feats.shape
 
 # create instance of class AdaptiveModel
-adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../../SJP_JC_Audio/output")
 
-# split data into datasets
-trainX, trainy, valX, valy, testX, testy = adapt.split_data()
 
 # uncomment the following lines to save and load folds
 # adapt.save_data(trainX, trainy, valX, valy, testX, testy)
@@ -44,35 +41,44 @@ trainX, trainy, valX, valy, testX, testy = adapt.split_data()
 # hyperparameter tuning on LSTM model
 n_lstm_units = [10, 20, 50, 100]
 n_connected_units = [5, 10, 20, 50]
-n_lstm = [1, 5, 10, 20]
-batch = [12, 24, 32, 64]
+n_lstm = [5, 10, 20]
+batch = [32, 64]
+
+# prep pyplot to view the results
+import matplotlib.pyplot as plt
+
+adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../../SJP_JC_Audio/output")
+
+# split data into datasets
+trainX, trainy, valX, valy, testX, testy = adapt.split_data()
 
 # moderate-sized grid search
 for n_l_u in n_lstm_units:
     for n_c_u in n_connected_units:
         for n_l in n_lstm:
             for b in batch:
+                # todo: optimize this by removing model from adapt (use as input to training function,
+                #       instantiate with each of the separate model calls)
+
                 print("Number of lstm units: " + str(n_l_u))
                 print("Number of connected units: " + str(n_c_u))
                 print("Number of lstm layers: " + str(n_l))
                 print("Batch size: " + str(b))
 
-                adapt.lstm_model(n_lstm=n_l, output_size=1, n_lstm_units=n_l_u, n_connected_units=n_c_u,
+                model = adapt.lstm_model(n_lstm=n_l, output_size=1, n_lstm_units=n_l_u, n_connected_units=n_c_u,
                                  act="tanh")  # relu doesn't work with this dataset
 
-                valy, y_preds = adapt.train_and_predict(trainX, trainy, valX, valy, batch=b)
+                valy, y_preds = adapt.train_and_predict(model, trainX, trainy, valX, valy, batch=b)
 
-                # print the linear regression and display datapoints
-                import matplotlib.pyplot as plt
+                plt.plot([0, 6], [0, 6], 'k-', color='red')
+                plt.scatter(valy, y_preds, color='blue', label='data')
 
-                plt.scatter(valy, y_preds, color='blue', label= 'data')
-                plt.plot([0,6],[0,6],'k-',color='red')
-
-                # plt.plot(y_preds, y_fit, color='red', linewidth=2, label='Linear regression\n'+reg_label)
-                plt.title('y vs y-hat {0} lstm units, {1} connected units, {2} lstm layers, batch size {3}'.format(n_l_u, n_c_u, n_l, b))
                 plt.legend()
                 plt.xlabel('observed (y)')
-                plt.xlim(0,6)
+                plt.xlim(0, 6)
                 plt.ylabel('predicted (y-hat)')
-                plt.ylim(0,6)
+                plt.ylim(0, 6)
+
+                plt.title('y vs y-hat {0} lstm units, {1} connected units, {2} lstm layers, batch size {3}'.format(n_l_u, n_c_u, n_l, b))
                 plt.savefig("{0}-{1}-{2}-{3}.png".format(n_l_u, n_c_u, n_l, b))
+                plt.clf()

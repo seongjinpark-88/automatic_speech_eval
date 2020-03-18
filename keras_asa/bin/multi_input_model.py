@@ -249,7 +249,7 @@ class AdaptiveModel:
         self.ys = ydata
         self.data_shape = data_shape
         self.save_path = outpath
-        self.model = Sequential()
+        # self.model = Sequential()
 
     def split_data(self, train=0.7, test=0.15):
         """
@@ -315,16 +315,18 @@ class AdaptiveModel:
         output_act:             the activation function in the final layer
         output_size:            the length of predictions vector; default is 7
         """
+        model = Sequential()
         while n_connected > 0:
-            self.model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
+            model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
                                  activation=act, dropout=dropout))
             n_connected -= 1
         # add the final layer with output activation
-        self.model.add(Dense(output_size, activation=output_act))
+        model.add(Dense(output_size, activation=output_act))
         # set an optimizer -- adam with default param values
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
-        self.model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+        model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+        return model
 
     def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
                      n_connected_units=25, l_rate = 0.001, beta_1=0.9, beta_2=0.999,
@@ -343,38 +345,43 @@ class AdaptiveModel:
         output_act:             the activation function in the final layer
         output_size:            the length of predictions vector; default is 7
         """
+        # clear previously-created model
+        # keras.backend.clear_session()
+
+        model = Sequential()
         # add all the hidden layers
         if n_lstm > 1:
-            self.model.add(Bidirectional(LSTM(n_lstm_units,
-                                              activation=act, return_sequences=True,
-                                              input_shape=self.data_shape[1:], dropout=dropout,
-                                              recurrent_dropout=dropout)))
-            n_lstm -= 1
-            # print("N LSTM layers left equals: " + str(n_lstm))
-            while n_lstm > 0:
-                self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
-                                                  activation=act, dropout=dropout, recurrent_dropout=dropout,
-                                                  return_sequences=False)))
+            while n_lstm > 1:
+                model.add(Bidirectional(LSTM(n_lstm_units,
+                                                  activation=act,
+                                                  input_shape=self.data_shape[1:], dropout=dropout,
+                                                  recurrent_dropout=dropout, return_sequences=True)))
                 n_lstm -= 1
+            # print("N LSTM layers left equals: " + str(n_lstm))
+            model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+                                              activation=act, dropout=dropout, recurrent_dropout=dropout,
+                                              return_sequences=False)))
+            n_lstm -= 1
             # print("THE LSTM layers completed")
         else:
-            self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+            model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
                                               activation=act, dropout=dropout, recurrent_dropout=dropout,
                                               return_sequences=False)))
         # add the connected layers
         while n_connected > 0:
-            self.model.add(Dense(n_connected_units, input_shape=(self.data_shape[0],1),
+            model.add(Dense(n_connected_units, input_shape=(self.data_shape[0],1),
                                  activation=act))
             n_connected -= 1
         # print("The connected layer worked")
         # add the final layer with output activation
-        self.model.add(Dense(output_size, activation=output_act))
+        model.add(Dense(output_size, activation=output_act))
         # set an optimizer -- adam with default param values
         # print("The output layer worked")
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
-        self.model.compile(loss=loss_fx, optimizer=opt)
+        model.compile(loss=loss_fx, optimizer=opt)
         print("Model compiled successfully")
+        return model
 
     def final_layers(self, n_connected=1, n_connected_units=25, l_rate=0.001,
                   dropout=0.2, beta_1=0.9, beta_2=0.999, act='relu',
@@ -387,7 +394,7 @@ class AdaptiveModel:
         # compile mlp and lstm
         # train the final layer model on the TRAINING output of each model
 
-    def train_and_predict(self, trainX, trainy, valX, valy, batch=32, num_epochs=100):
+    def train_and_predict(self, model, trainX, trainy, valX, valy, batch=32, num_epochs=100):
         """
         Train the model
         batch:              minibatch size
@@ -397,12 +404,15 @@ class AdaptiveModel:
         early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
         # save best model
         save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
-        self.model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
+        model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
                        class_weight=None, validation_data=(valX, valy), callbacks=[early_stopping, save_best])
+        # # get summary of model
+        # model.summary()
+        # sys.exit(1)
         # get predictions on the dev set
-        y_preds = self.model.predict(valX, batch_size=batch)
+        y_preds = model.predict(valX, batch_size=batch)
 
         return valy, y_preds
 
-    def save_model(self, m_name='best_model.h5'):
-        self.model.save(m_name)
+    def save_model(self, model, m_name='best_model.h5'):
+        model.save(m_name)
