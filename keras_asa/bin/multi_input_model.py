@@ -107,7 +107,7 @@ class GetFeatures:
                                                             self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
 
-    def get_features_dict(self):
+    def get_features_dict(self, dropped_cols=None):
         """
         Get the set of phonological/phonetic features
         """
@@ -120,7 +120,11 @@ class GetFeatures:
                 csv_name = csvfile.split(".")[0]
                 # get data from these files
                 csv_data = pd.read_csv("{0}/{1}".format(self.savepath, csvfile), sep=';')
-                csv_data = csv_data.drop('name', axis=1).to_numpy().tolist()
+                # drop name and time frame, as these aren't useful
+                if dropped_cols:
+                    csv_data = self.drop_cols(csv_data, dropped_cols)
+                else:
+                    csv_data = csv_data.drop(['name', 'frameTime'], axis=1).to_numpy().tolist()
                 if "nan" in csv_data or "NaN" in csv_data or "inf" in csv_data:
                     pprint.pprint(csv_data)
                     print("Data contains problematic data points")
@@ -131,7 +135,14 @@ class GetFeatures:
 
         return feature_set
 
-    def zip_feats_and_ys(self, feats_dict, ys_dict):
+    def drop_cols(self, dataframe, to_drop):
+        """
+        to drop columns from pandas dataframe
+        used in get_features_dict
+        """
+        return dataframe.drop(to_drop, axis=1).to_numpy().tolist()
+
+    def zip_feats_and_ys(self, feats_dict, ys_dict, normalize=False):
         """
         takes the created features dict, ys dit and combines them
         only takes data that has existing x values
@@ -141,31 +152,34 @@ class GetFeatures:
             if item not in ys_dict.keys():
                 feats_dict.pop(item)
         # normalize feats list
-        feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
+        if normalize:
+            feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
+        else:
+            feats_list = [feats_dict[item] for item in sorted(feats_dict)]
         # print(feats_list[0])
         ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
         padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
-                                                                         dtype='float32')
+                                                                          dtype='float32')
         # print(ys_list[0])
         return zip(padded_feats_list, ys_list)
 
-    def get_select_cols(self, cols):
-        """
-        If you happen to use a conf file that results in too much data
-        and want to clean it up, select only the columns you want.
-        suprafile: the path to a csv file containing results
-        cols: an array of columns that you want to select
-        Returns data as an np array
-        """
-        suprafile = "{0}/{1}.csv".format(self.apath, self.supra_name)
-        supras = pd.read_csv(suprafile, sep=',')
-        try:
-            return supras[cols]
-        except:
-            for col in cols:
-                if col not in supras.columns:
-                    cols.remove(col)
-            return supras[cols].to_numpy()
+    # def get_select_cols(self, cols):
+    #     """
+    #     If you happen to use a conf file that results in too much data
+    #     and want to clean it up, select only the columns you want.
+    #     suprafile: the path to a csv file containing results
+    #     cols: an array of columns that you want to select
+    #     Returns data as an np array
+    #     """
+    #     suprafile = "{0}/{1}.csv".format(self.apath, self.supra_name)
+    #     supras = pd.read_csv(suprafile, sep=',')
+    #     try:
+    #         return supras[cols]
+    #     except:
+    #         for col in cols:
+    #             if col not in supras.columns:
+    #                 cols.remove(col)
+    #         return supras[cols].to_numpy()
 
 
 class PrepareData:
@@ -251,6 +265,34 @@ class AdaptiveModel:
         self.save_path = outpath
         # self.model = Sequential()
 
+    def split_data_for_cv(self, k=10):
+        """
+        Split the data into k folds for CV
+        k : number of folds
+        Returns dicts of n : data and n : ys
+        """
+        cv_data_dict = {}
+        cv_ys_dict = {}
+
+        data = list(zip(self.xs, self.ys))
+        random.shuffle(data)
+
+        total_length = self.data_shape[0]
+
+        k_length = round(total_length / k)
+
+        for i in range(k-1):
+            fold_data = data[i*k_length:(i+1)*k_length]
+            fold_xs, fold_ys = list(zip(*fold_data))
+            cv_data_dict[i+1] = np.array(fold_xs)
+            cv_ys_dict[i+1] = np.array(fold_ys)
+        final_fold_data = data[(k-1)*k_length:]
+        final_xs, final_ys = list(zip(*final_fold_data))
+        cv_data_dict[k] = np.array(final_xs)
+        cv_ys_dict[k] = np.array(final_ys)
+
+        return cv_data_dict, cv_ys_dict
+
     def split_data(self, train=0.7, test=0.15):
         """
         Split the data into training, dev and testing folds.
@@ -300,6 +342,16 @@ class AdaptiveModel:
 
         return trainX, trainy, valX, valy, testX, testy
 
+    def lr_model(self, act='tanh', output_size=1, loss_fx="mean_squared_error",
+                 l_rate=0.001, beta_1=0.9, beta_2=0.999):
+        model = Sequential()
+        model.add(Dense(output_dim=output_size, input_dim=self.data_shape[1:],
+                        activation=act))
+        # set an optimizer -- adam with default param values
+        opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
+        model.compile(optimizer=opt, loss=loss_fx)
+        return model
+
     def mlp_model(self, n_connected=2, n_connected_units=25, l_rate=0.001,
                   dropout=0.2, beta_1=0.9, beta_2=0.999, act='relu',
                   output_act='softmax', loss_fx='mean_squared_error',
@@ -316,7 +368,7 @@ class AdaptiveModel:
         output_size:            the length of predictions vector; default is 7
         """
         model = Sequential()
-        while n_connected > 0:
+        while n_connected > 1:
             model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
                                  activation=act, dropout=dropout))
             n_connected -= 1
@@ -401,9 +453,9 @@ class AdaptiveModel:
         num_epochs:         number of epochs
         """
         # create early stopping criterion -- stops when val_loss starts to increase
-        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
+        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=5)
         # save best model
-        save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
+        save_best = ModelCheckpoint('best.h5', monitor='loss', mode='min')
         model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
                        class_weight=None, validation_data=(valX, valy), callbacks=[early_stopping, save_best])
         # # get summary of model
