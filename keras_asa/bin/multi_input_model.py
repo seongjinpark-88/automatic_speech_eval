@@ -45,6 +45,17 @@ def normalize_data(data):
     return inverse
 
 
+def reshape_data(data, n_dim=2):
+    """
+    To convert 3d data to 2d data (bc of how data was extracted)
+    n_dim : number of required dimensions
+    """
+    if n_dim != 2:
+        return "Data should not be reshaped or can't be at this time"
+    else:
+        return np.reshape(data, (data.shape[0], data.shape[-1]))
+
+
 class GetFeatures:
     """
     Takes input files and gets segmental and/or suprasegmental features
@@ -85,7 +96,7 @@ class GetFeatures:
     #     os.system("cp -r {0}/S*/wav/* {2}/".format(self.apath, single_dir_path))
     #     self.apath = single_dir_path
 
-    def extract_features(self, supra=True):
+    def extract_features(self, supra=False, summary_stats=False):
         """
         Extract the required features in openSMILE
         """
@@ -102,9 +113,14 @@ class GetFeatures:
                                                             self.savepath, wavname))
                     # self.supra_name = output_name # todo: delete?
                 else:
-                    os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
-                          -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
-                                                            self.savepath, wavname))
+                    if summary_stats is False:
+                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                              -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
+                                                                self.savepath, wavname))
+                    else:
+                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                              -csvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
+                                                             self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
 
     def get_features_dict(self, dropped_cols=None):
@@ -353,9 +369,9 @@ class AdaptiveModel:
         return model
 
     def mlp_model(self, n_connected=2, n_connected_units=25, l_rate=0.001,
-                  dropout=0.2, beta_1=0.9, beta_2=0.999, act='relu',
-                  output_act='softmax', loss_fx='mean_squared_error',
-                  output_size=7):
+                  dropout=0.2, beta_1=0.9, beta_2=0.999, act='tanh',
+                  output_act='linear', loss_fx='mean_squared_error',
+                  output_size=1):
         """
         Initialize the MLP model
         n_connected:            the number of mlp layers
@@ -368,16 +384,26 @@ class AdaptiveModel:
         output_size:            the length of predictions vector; default is 7
         """
         model = Sequential()
-        while n_connected > 1:
-            model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
-                                 activation=act, dropout=dropout))
-            n_connected -= 1
-        # add the final layer with output activation
-        model.add(Dense(output_size, activation=output_act))
+        print(self.data_shape)
+        print(self.data_shape[1:])
+        if n_connected >= 2:
+            while n_connected > 1:
+                model.add(Dense(n_connected_units, input_dim=self.data_shape[-1],
+                                     activation=act))
+                model.add(Dropout(dropout))
+                n_connected -= 1
+            # add the final layer with output activation
+            model.add(Dense(output_size, activation=output_act))
+        else:
+            # just feed it through linearly if for some reason n_connected = 1
+            # this is no longer an mlp, though
+            model.add(Dense(output_size, input_dim=self.data_shape[-1],
+                            activation=output_act, dropout=dropout))
         # set an optimizer -- adam with default param values
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
-        model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+        # model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+        model.compile(loss=loss_fx, optimizer=opt)
         return model
 
     def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
@@ -455,7 +481,7 @@ class AdaptiveModel:
         # create early stopping criterion -- stops when val_loss starts to increase
         early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=5)
         # save best model
-        save_best = ModelCheckpoint('best.h5', monitor='loss', mode='min')
+        save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
         model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
                        class_weight=None, validation_data=(valX, valy), callbacks=[early_stopping, save_best])
         # # get summary of model
