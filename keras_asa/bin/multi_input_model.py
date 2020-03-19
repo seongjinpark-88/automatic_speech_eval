@@ -45,6 +45,17 @@ def normalize_data(data):
     return inverse
 
 
+def reshape_data(data, n_dim=2):
+    """
+    To convert 3d data to 2d data (bc of how data was extracted)
+    n_dim : number of required dimensions
+    """
+    if n_dim != 2:
+        return "Data should not be reshaped or can't be at this time"
+    else:
+        return np.reshape(data, (data.shape[0], data.shape[-1]))
+
+
 class GetFeatures:
     """
     Takes input files and gets segmental and/or suprasegmental features
@@ -85,7 +96,7 @@ class GetFeatures:
     #     os.system("cp -r {0}/S*/wav/* {2}/".format(self.apath, single_dir_path))
     #     self.apath = single_dir_path
 
-    def extract_features(self, supra=True):
+    def extract_features(self, supra=False, summary_stats=False):
         """
         Extract the required features in openSMILE
         """
@@ -102,12 +113,17 @@ class GetFeatures:
                                                             self.savepath, wavname))
                     # self.supra_name = output_name # todo: delete?
                 else:
-                    os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
-                          -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
-                                                            self.savepath, wavname))
+                    if summary_stats is False:
+                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                              -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
+                                                                self.savepath, wavname))
+                    else:
+                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                              -csvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
+                                                             self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
 
-    def get_features_dict(self):
+    def get_features_dict(self, dropped_cols=None):
         """
         Get the set of phonological/phonetic features
         """
@@ -120,7 +136,11 @@ class GetFeatures:
                 csv_name = csvfile.split(".")[0]
                 # get data from these files
                 csv_data = pd.read_csv("{0}/{1}".format(self.savepath, csvfile), sep=';')
-                csv_data = csv_data.drop('name', axis=1).to_numpy().tolist()
+                # drop name and time frame, as these aren't useful
+                if dropped_cols:
+                    csv_data = self.drop_cols(csv_data, dropped_cols)
+                else:
+                    csv_data = csv_data.drop(['name', 'frameTime'], axis=1).to_numpy().tolist()
                 if "nan" in csv_data or "NaN" in csv_data or "inf" in csv_data:
                     pprint.pprint(csv_data)
                     print("Data contains problematic data points")
@@ -131,7 +151,14 @@ class GetFeatures:
 
         return feature_set
 
-    def zip_feats_and_ys(self, feats_dict, ys_dict):
+    def drop_cols(self, dataframe, to_drop):
+        """
+        to drop columns from pandas dataframe
+        used in get_features_dict
+        """
+        return dataframe.drop(to_drop, axis=1).to_numpy().tolist()
+
+    def zip_feats_and_ys(self, feats_dict, ys_dict, normalize=False):
         """
         takes the created features dict, ys dit and combines them
         only takes data that has existing x values
@@ -141,31 +168,34 @@ class GetFeatures:
             if item not in ys_dict.keys():
                 feats_dict.pop(item)
         # normalize feats list
-        feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
+        if normalize:
+            feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
+        else:
+            feats_list = [feats_dict[item] for item in sorted(feats_dict)]
         # print(feats_list[0])
         ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
         padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
-                                                                         dtype='float32')
+                                                                          dtype='float32')
         # print(ys_list[0])
         return zip(padded_feats_list, ys_list)
 
-    def get_select_cols(self, cols):
-        """
-        If you happen to use a conf file that results in too much data
-        and want to clean it up, select only the columns you want.
-        suprafile: the path to a csv file containing results
-        cols: an array of columns that you want to select
-        Returns data as an np array
-        """
-        suprafile = "{0}/{1}.csv".format(self.apath, self.supra_name)
-        supras = pd.read_csv(suprafile, sep=',')
-        try:
-            return supras[cols]
-        except:
-            for col in cols:
-                if col not in supras.columns:
-                    cols.remove(col)
-            return supras[cols].to_numpy()
+    # def get_select_cols(self, cols):
+    #     """
+    #     If you happen to use a conf file that results in too much data
+    #     and want to clean it up, select only the columns you want.
+    #     suprafile: the path to a csv file containing results
+    #     cols: an array of columns that you want to select
+    #     Returns data as an np array
+    #     """
+    #     suprafile = "{0}/{1}.csv".format(self.apath, self.supra_name)
+    #     supras = pd.read_csv(suprafile, sep=',')
+    #     try:
+    #         return supras[cols]
+    #     except:
+    #         for col in cols:
+    #             if col not in supras.columns:
+    #                 cols.remove(col)
+    #         return supras[cols].to_numpy()
 
 
 class PrepareData:
@@ -249,7 +279,35 @@ class AdaptiveModel:
         self.ys = ydata
         self.data_shape = data_shape
         self.save_path = outpath
-        self.model = Sequential()
+        # self.model = Sequential()
+
+    def split_data_for_cv(self, k=10):
+        """
+        Split the data into k folds for CV
+        k : number of folds
+        Returns dicts of n : data and n : ys
+        """
+        cv_data_dict = {}
+        cv_ys_dict = {}
+
+        data = list(zip(self.xs, self.ys))
+        random.shuffle(data)
+
+        total_length = self.data_shape[0]
+
+        k_length = round(total_length / k)
+
+        for i in range(k-1):
+            fold_data = data[i*k_length:(i+1)*k_length]
+            fold_xs, fold_ys = list(zip(*fold_data))
+            cv_data_dict[i+1] = np.array(fold_xs)
+            cv_ys_dict[i+1] = np.array(fold_ys)
+        final_fold_data = data[(k-1)*k_length:]
+        final_xs, final_ys = list(zip(*final_fold_data))
+        cv_data_dict[k] = np.array(final_xs)
+        cv_ys_dict[k] = np.array(final_ys)
+
+        return cv_data_dict, cv_ys_dict
 
     def split_data(self, train=0.7, test=0.15):
         """
@@ -300,10 +358,20 @@ class AdaptiveModel:
 
         return trainX, trainy, valX, valy, testX, testy
 
+    def lr_model(self, act='tanh', output_size=1, loss_fx="mean_squared_error",
+                 l_rate=0.001, beta_1=0.9, beta_2=0.999):
+        model = Sequential()
+        model.add(Dense(output_dim=output_size, input_dim=self.data_shape[1:],
+                        activation=act))
+        # set an optimizer -- adam with default param values
+        opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
+        model.compile(optimizer=opt, loss=loss_fx)
+        return model
+
     def mlp_model(self, n_connected=2, n_connected_units=25, l_rate=0.001,
-                  dropout=0.2, beta_1=0.9, beta_2=0.999, act='relu',
-                  output_act='softmax', loss_fx='mean_squared_error',
-                  output_size=7):
+                  dropout=0.2, beta_1=0.9, beta_2=0.999, act='tanh',
+                  output_act='linear', loss_fx='mean_squared_error',
+                  output_size=1):
         """
         Initialize the MLP model
         n_connected:            the number of mlp layers
@@ -315,16 +383,28 @@ class AdaptiveModel:
         output_act:             the activation function in the final layer
         output_size:            the length of predictions vector; default is 7
         """
-        while n_connected > 0:
-            self.model.add(Dense(n_connected_units, input_dim=self.data_shape[1],
-                                 activation=act, dropout=dropout))
-            n_connected -= 1
-        # add the final layer with output activation
-        self.model.add(Dense(output_size, activation=output_act))
+        model = Sequential()
+        print(self.data_shape)
+        print(self.data_shape[1:])
+        if n_connected >= 2:
+            while n_connected > 1:
+                model.add(Dense(n_connected_units, input_dim=self.data_shape[-1],
+                                     activation=act))
+                model.add(Dropout(dropout))
+                n_connected -= 1
+            # add the final layer with output activation
+            model.add(Dense(output_size, activation=output_act))
+        else:
+            # just feed it through linearly if for some reason n_connected = 1
+            # this is no longer an mlp, though
+            model.add(Dense(output_size, input_dim=self.data_shape[-1],
+                            activation=output_act, dropout=dropout))
         # set an optimizer -- adam with default param values
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
-        self.model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+        # model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
+        model.compile(loss=loss_fx, optimizer=opt)
+        return model
 
     def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
                      n_connected_units=25, l_rate = 0.001, beta_1=0.9, beta_2=0.999,
@@ -343,38 +423,43 @@ class AdaptiveModel:
         output_act:             the activation function in the final layer
         output_size:            the length of predictions vector; default is 7
         """
+        # clear previously-created model
+        # keras.backend.clear_session()
+
+        model = Sequential()
         # add all the hidden layers
         if n_lstm > 1:
-            self.model.add(Bidirectional(LSTM(n_lstm_units,
-                                              activation=act, return_sequences=True,
-                                              input_shape=self.data_shape[1:], dropout=dropout,
-                                              recurrent_dropout=dropout)))
-            n_lstm -= 1
-            # print("N LSTM layers left equals: " + str(n_lstm))
-            while n_lstm > 0:
-                self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
-                                                  activation=act, dropout=dropout, recurrent_dropout=dropout,
-                                                  return_sequences=False)))
+            while n_lstm > 1:
+                model.add(Bidirectional(LSTM(n_lstm_units,
+                                                  activation=act,
+                                                  input_shape=self.data_shape[1:], dropout=dropout,
+                                                  recurrent_dropout=dropout, return_sequences=True)))
                 n_lstm -= 1
+            # print("N LSTM layers left equals: " + str(n_lstm))
+            model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+                                              activation=act, dropout=dropout, recurrent_dropout=dropout,
+                                              return_sequences=False)))
+            n_lstm -= 1
             # print("THE LSTM layers completed")
         else:
-            self.model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
+            model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
                                               activation=act, dropout=dropout, recurrent_dropout=dropout,
                                               return_sequences=False)))
         # add the connected layers
         while n_connected > 0:
-            self.model.add(Dense(n_connected_units, input_shape=(self.data_shape[0],1),
+            model.add(Dense(n_connected_units, input_shape=(self.data_shape[0],1),
                                  activation=act))
             n_connected -= 1
         # print("The connected layer worked")
         # add the final layer with output activation
-        self.model.add(Dense(output_size, activation=output_act))
+        model.add(Dense(output_size, activation=output_act))
         # set an optimizer -- adam with default param values
         # print("The output layer worked")
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
-        self.model.compile(loss=loss_fx, optimizer=opt)
+        model.compile(loss=loss_fx, optimizer=opt)
         print("Model compiled successfully")
+        return model
 
     def final_layers(self, n_connected=1, n_connected_units=25, l_rate=0.001,
                   dropout=0.2, beta_1=0.9, beta_2=0.999, act='relu',
@@ -387,22 +472,25 @@ class AdaptiveModel:
         # compile mlp and lstm
         # train the final layer model on the TRAINING output of each model
 
-    def train_and_predict(self, trainX, trainy, valX, valy, batch=32, num_epochs=100):
+    def train_and_predict(self, model, trainX, trainy, valX, valy, batch=32, num_epochs=100):
         """
         Train the model
         batch:              minibatch size
         num_epochs:         number of epochs
         """
         # create early stopping criterion -- stops when val_loss starts to increase
-        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
+        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=5)
         # save best model
         save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
-        self.model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
+        model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
                        class_weight=None, validation_data=(valX, valy), callbacks=[early_stopping, save_best])
+        # # get summary of model
+        # model.summary()
+        # sys.exit(1)
         # get predictions on the dev set
-        y_preds = self.model.predict(valX, batch_size=batch)
+        y_preds = model.predict(valX, batch_size=batch)
 
         return valy, y_preds
 
-    def save_model(self, m_name='best_model.h5'):
-        self.model.save(m_name)
+    def save_model(self, model, m_name='best_model.h5'):
+        model.save(m_name)
