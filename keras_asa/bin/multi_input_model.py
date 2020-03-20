@@ -1,6 +1,10 @@
 # prepare model that accepts multiple types of input
 
 import os, sys
+from collections import OrderedDict
+import operator
+from functools import reduce
+
 import numpy as np
 import pandas as pd
 import pickle
@@ -56,6 +60,106 @@ def reshape_data(data, n_dim=2):
         return np.reshape(data, (data.shape[0], data.shape[-1]))
 
 
+def get_phonological_features(setpath):
+    """
+    Get the phonological features from a csv file
+    """
+    phon_dict = {}
+    with open(setpath, 'r') as phonfile:
+        for line in phonfile:
+            line = line.strip().split(',')
+            wav_name = line[0].split('.')[0]
+            data = line[1:]
+            phon_dict[wav_name] = data
+    return phon_dict
+
+
+def get_ys_dict(ypath, speaker_list):
+    """
+    get the set of y values for the data;
+    these come from a csv with 3 cols:
+    stimulus, speaker, average_score
+    ypath: the path to the csv, INCLUDING file name
+    """
+    ys = {}
+    with open(ypath, 'r') as yfile:
+        for line in yfile:
+            line = line.strip().split(",")
+            if line[1] in speaker_list:
+                ys[line[0]] = line[2]
+    return ys
+
+
+def zip_feats_and_ys(feats_dict, ys_dict, normalize=False):
+    """
+    takes the created features dict, ys dit and combines them
+    only takes data that has existing x values
+    also adds zero padding to the features
+    """
+    for item in sorted(feats_dict.keys()):
+        if item not in ys_dict.keys():
+            feats_dict.pop(item)
+    # normalize feats list
+    if normalize:
+        feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
+    else:
+        feats_list = [feats_dict[item] for item in sorted(feats_dict)]
+    # print(feats_list[0])
+    ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
+    padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
+                                                                      dtype='float32')
+    # print(ys_list[0])
+    return zip(padded_feats_list, ys_list)
+
+
+def train_and_predict(model, trainX, trainy, valX, valy, batch=32, num_epochs=100):
+    """
+    Train the model
+    batch:              minibatch size
+    num_epochs:         number of epochs
+    """
+    # create early stopping criterion -- stops when val_loss starts to increase
+    early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
+    # save best model
+    save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
+    model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
+                   class_weight=None, validation_data=(valX, valy), callbacks=[early_stopping, save_best])
+    # # get summary of model
+    # model.summary()
+    # sys.exit(1)
+    # get predictions on the dev set
+    y_preds = model.predict(valX, batch_size=batch)
+
+    return valy, y_preds
+
+
+def save_model(model, m_name='best_model.h5'):
+    model.save(m_name)
+
+
+def cv_train_wrapper(model, cv_data, cv_ys, batch, num_epochs):
+    """
+    Wrapper for training with k-fold CV
+    returns all the predictions for y along with all gold y values
+    """
+    all_y = []
+    all_preds = []
+    cv_data = OrderedDict(cv_data)
+    cv_ys = OrderedDict(cv_ys)
+    for key, val in cv_data.items():
+        valX = cv_data[key]
+        valy = cv_ys[key]
+        trainX = [cv_data[k] for k in set(cv_data.keys()-[key])]
+        trainX = reduce(operator.add, trainX)
+        trainy = [cv_ys[k] for k in set(cv_ys.keys()-[key])]
+        trainy = reduce(operator.add, trainy)
+        valy, ypreds = train_and_predict(model, trainX, trainy, valX, valy, batch, num_epochs)
+        all_y.extend(valy)
+        all_preds.extend(ypreds)
+
+    return all_y, all_preds
+
+
 class GetFeatures:
     """
     Takes input files and gets segmental and/or suprasegmental features
@@ -68,20 +172,6 @@ class GetFeatures:
         self.supra_name = None # todo: delete?
         self.segment_name = None # todo: delete?
 
-    def get_ys_dict(self, ypath, speaker_list):
-        """
-        get the set of y values for the data;
-        these come from a csv with 3 cols:
-        stimulus, speaker, average_score
-        ypath: the path to the csv, INCLUDING file name
-        """
-        ys = {}
-        with open(ypath, 'r') as yfile:
-            for line in yfile:
-                line = line.strip().split(",")
-                if line[1] in speaker_list:
-                    ys[line[0]] = line[2]
-        return ys
     #
     # def copy_files_to_single_directory(self, single_dir_path):
     #     """
@@ -118,7 +208,7 @@ class GetFeatures:
                               -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                                 self.savepath, wavname))
                     else:
-                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS10_paraling.conf -I {1}/{2}\
                               -csvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                              self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
@@ -157,27 +247,6 @@ class GetFeatures:
         used in get_features_dict
         """
         return dataframe.drop(to_drop, axis=1).to_numpy().tolist()
-
-    def zip_feats_and_ys(self, feats_dict, ys_dict, normalize=False):
-        """
-        takes the created features dict, ys dit and combines them
-        only takes data that has existing x values
-        also adds zero padding to the features
-        """
-        for item in sorted(feats_dict.keys()):
-            if item not in ys_dict.keys():
-                feats_dict.pop(item)
-        # normalize feats list
-        if normalize:
-            feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
-        else:
-            feats_list = [feats_dict[item] for item in sorted(feats_dict)]
-        # print(feats_list[0])
-        ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
-        padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
-                                                                          dtype='float32')
-        # print(ys_list[0])
-        return zip(padded_feats_list, ys_list)
 
     # def get_select_cols(self, cols):
     #     """
@@ -471,26 +540,3 @@ class AdaptiveModel:
         # create an lstm layer
         # compile mlp and lstm
         # train the final layer model on the TRAINING output of each model
-
-    def train_and_predict(self, model, trainX, trainy, valX, valy, batch=32, num_epochs=100):
-        """
-        Train the model
-        batch:              minibatch size
-        num_epochs:         number of epochs
-        """
-        # create early stopping criterion -- stops when val_loss starts to increase
-        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=5)
-        # save best model
-        save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
-        model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
-                       class_weight=None, validation_data=(valX, valy), callbacks=[early_stopping, save_best])
-        # # get summary of model
-        # model.summary()
-        # sys.exit(1)
-        # get predictions on the dev set
-        y_preds = model.predict(valX, batch_size=batch)
-
-        return valy, y_preds
-
-    def save_model(self, model, m_name='best_model.h5'):
-        model.save(m_name)
