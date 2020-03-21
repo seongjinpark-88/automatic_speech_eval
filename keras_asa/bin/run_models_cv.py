@@ -15,8 +15,7 @@ phono_feats = modeler.get_phonological_features("../../SJP_JC_Audio/rhythm.csv")
 # select participants to use
 speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
 
-all_dfiles = ["../../SJP_JC_Audio/perception_results/accented_avgs.csv",
-              "../../SJP_JC_Audio/perception_results/comp_avgs.csv"]
+all_dfiles = ["../../SJP_JC_Audio/perception_results/comp_avgs.csv"]
 
 for fpath in all_dfiles:
     # read in y data
@@ -78,9 +77,9 @@ for fpath in all_dfiles:
                                                     act='tanh', output_act='linear',
                                                     output_size=1)
 
-                    valy, y_preds = modeler.cv_train_wrapper(sum_model, cv_data, cv_ys, batch=b, num_epochs=1000,
-                                                             savefile="fluency_phonological_cv_{0}-{1}-{2}.csv".format(n_c_u,
-                                                                                                                       n_c, b))
+                    valy, y_preds = modeler.cv_train_wrapper(sum_model, cv_data, cv_ys, batch=b, num_epochs=1000) # ,
+                                                             # savefile="fluency_phonological_cv_{0}-{1}-{2}.csv".format(n_c_u,
+                                                             #                                                           n_c, b))
 
                     mean_y = mean(valy)
                     ss_res = []
@@ -112,9 +111,7 @@ for fpath in all_dfiles:
                     model_stats = [str(mse), str(r_value), str(n_c_u), str(n_c), str(b), str(l_r)]
                     total_stats.append(model_stats)
 
-    # with open('../../SJP_JC_Audio/gridsearch/phonological_mlp_comprehensibility.csv', 'w') as wfile:
-    # with open('../../SJP_JC_Audio/gridsearch/phonological_mlp_accentedness.csv', 'w') as wfile:
-    with open('../../SJP_JC_Audio/gridsearch/phonological_mlp_fluency.csv', 'w') as wfile:
+    with open('../../SJP_JC_Audio/gridsearch/phonological_mlp_comprehensibility.csv', 'w') as wfile:
         for item in total_stats:
             wfile.write(",".join(item))
             wfile.write("\n")

@@ -124,7 +124,7 @@ def zip_feats_and_ys(feats_dict, ys_dict, normalize=False):
 
 
 def train_and_predict(model, trainX, trainy, valX, valy, batch=32, num_epochs=100,
-                      cv=False, savefile='phonological_cv_log.csv'):
+                      cv=False):  # , savefile='phonological_cv_log.csv'):
     """
     Train the model
     batch:              minibatch size
@@ -133,15 +133,15 @@ def train_and_predict(model, trainX, trainy, valX, valy, batch=32, num_epochs=10
     # create early stopping criterion -- stops when val_loss starts to increase
     if cv:
         early_stopping = EarlyStopping(monitor='loss', mode='min', patience=10)
-        save_best = ModelCheckpoint('best_cv.h5', monitor='loss', mode='min')
+        # save_best = ModelCheckpoint('best_cv.h5', monitor='loss', mode='min')
     else:
         early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
     # save best model
-        save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
-    csv_saver = CSVLogger(savefile, append=True, separator=',')
+    #     save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
+    # csv_saver = CSVLogger(savefile, append=True, separator=',')
     model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
               class_weight=None, validation_data=(valX, valy),
-              callbacks=[early_stopping, save_best, csv_saver])
+              callbacks=[early_stopping])  # , save_best , csv_saver])
     # # get summary of model
     # model.summary()
     # sys.exit(1)
@@ -155,7 +155,7 @@ def save_model(model, m_name='best_model.h5'):
     model.save(m_name)
 
 
-def cv_train_wrapper(model, cv_data, cv_ys, batch, num_epochs, savefile="phonological_cv_log.csv"):
+def cv_train_wrapper(model, cv_data, cv_ys, batch, num_epochs):  # , savefile="phonological_cv_log.csv"):
     """
     Wrapper for training with k-fold CV
     returns all the predictions for y along with all gold y values
@@ -173,7 +173,7 @@ def cv_train_wrapper(model, cv_data, cv_ys, batch, num_epochs, savefile="phonolo
         # print(trainX)
         # sys.exit(1)
         trainy = np.asarray([item for k in set(cv_ys.keys()-[key]) for item in cv_ys[k]])
-        valy, ypreds = train_and_predict(model, trainX, trainy, valX, valy, batch, num_epochs, cv=True, savefile=savefile)
+        valy, ypreds = train_and_predict(model, trainX, trainy, valX, valy, batch, num_epochs, cv=True)  # , savefile=savefile)
         all_y.extend(valy)
         all_preds.extend(ypreds)
 
