@@ -71,10 +71,16 @@ for dpath in dset_paths:
         cv_data = cv_updated
 
         # hyperparameter tuning on MLP model
-        n_connected_units = [5, 10, 20, 50, 100, 200, 400] # higher than 5 is better...
-        n_connected = [2, 3, 4, 5, 10] # larger numbers fare worse
-        batch = [12, 32, 64, 100]
-        learning_rate = [0.001, 0.005, 0.01, 0.1]
+        # n_connected_units = [5, 10, 20, 50, 100, 200, 400] # higher than 5 is better...
+        # n_connected = [2, 3, 4, 5, 10] # larger numbers fare worse
+        # batch = [12, 32, 64, 100]
+        # learning_rate = [0.001, 0.005, 0.01, 0.1]
+
+        # additional testing based on best models so far
+        n_connected_units = [200, 400]
+        n_connected = [2, 5]
+        batch = [100]
+        learning_rate = [0.0005]
 
         total_stats = [['mse', 'r_squared', 'number_connected_units', 'number_connected_layers', 'batch_size',
                         'learning_rate']]
@@ -103,34 +109,34 @@ for dpath in dset_paths:
 
         if fpath == "../../SJP_JC_Audio/perception_results/comp_avgs.csv":
             if dpath == "../../SJP_JC_Audio/IS10_summary_test":
-                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS10_mlp_comprehensibility.csv', 'w') as wfile:
+                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS10_mlp_comprehensibility.csv', 'a+') as wfile:
                     for item in total_stats:
                         wfile.write(",".join(item))
                         wfile.write("\n")
             else:
-                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS09_mlp_comprehensibility.csv', 'w') as wfile:
+                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS09_mlp_comprehensibility.csv', 'a+') as wfile:
                     for item in total_stats:
                         wfile.write(",".join(item))
                         wfile.write("\n")
         elif fpath == "../../SJP_JC_Audio/perception_results/fluency_avgs.csv":
             if dpath == "../../SJP_JC_Audio/IS10_summary_test":
-                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS10_mlp_fluency.csv', 'w') as wfile:
+                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS10_mlp_fluency.csv', 'a+') as wfile:
                     for item in total_stats:
                         wfile.write(",".join(item))
                         wfile.write("\n")
             else:
-                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS09_mlp_fluency.csv', 'w') as wfile:
+                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS09_mlp_fluency.csv', 'a+') as wfile:
                     for item in total_stats:
                         wfile.write(",".join(item))
                         wfile.write("\n")
         else:
             if dpath == "../../SJP_JC_Audio/IS10_summary_test":
-                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS10_mlp_accentedness.csv', 'w') as wfile:
+                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS10_mlp_accentedness.csv', 'a+') as wfile:
                     for item in total_stats:
                         wfile.write(",".join(item))
                         wfile.write("\n")
             else:
-                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS09_mlp_accentedness.csv', 'w') as wfile:
+                with open('../../SJP_JC_Audio/gridsearch/phonetic_summaryIS09_mlp_accentedness.csv', 'a+') as wfile:
                     for item in total_stats:
                         wfile.write(",".join(item))
                         wfile.write("\n")

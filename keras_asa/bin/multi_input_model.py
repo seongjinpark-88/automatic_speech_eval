@@ -180,6 +180,23 @@ def cv_train_wrapper(model, cv_data, cv_ys, batch, num_epochs):  # , savefile="p
     return all_y, all_preds
 
 
+def combine_feat_types(phonetic, phonological):
+    """
+    Combine 2 dicts containing feature values for the data
+    Returns a dict of concatenated data
+    """
+    combined = {}
+    for k in phonetic.keys():
+        if k in phonological.keys():
+            # phonetic is a nested list with one item, flatten
+            phonetic[k] = [part for item in phonetic[k] for part in item]
+            # add phonological to phonetic
+            phonetic[k].extend(phonological[k])
+            combined[k] = phonetic[k]
+    # return new dict
+    return combined
+
+
 class GetFeatures:
     """
     Takes input files and gets segmental and/or suprasegmental features
