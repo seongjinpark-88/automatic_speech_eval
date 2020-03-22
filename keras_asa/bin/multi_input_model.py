@@ -1,6 +1,10 @@
 # prepare model that accepts multiple types of input
 
 import os, sys
+from collections import OrderedDict
+import operator
+from functools import reduce
+
 import numpy as np
 import pandas as pd
 import pickle
@@ -10,7 +14,7 @@ import warnings
 import h5py
 
 # set seed for reproducibility
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from keras.engine import Layer
 
 seed = 888
@@ -18,6 +22,7 @@ random.seed(seed)
 np.random.seed(seed)
 
 import keras
+from keras import backend as K
 from keras.models import Sequential, Model
 from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten, TimeDistributed, Masking
 from keras import optimizers, Input
@@ -29,6 +34,16 @@ import tensorflow as tf
 # todo: finish data prep code, test on phonetic features!
 # todo: ensure that we can actually get the feature sets we want -- work on this
 # todo: rename suprasegmental/segmental to phonological/phonetic, respectively
+
+
+def r_squared(y_true, y_pred):
+    """
+    r-squared calculation
+    from: https://jmlb.github.io/ml/2017/03/20/CoeffDetermination_CustomMetric4Keras/
+    """
+    ss_res = K.sum(K.square(y_true-y_pred))
+    ss_tot = K.sum(K.square(y_true - K.mean(y_true)))
+    return 1 - ss_res / (ss_tot + K.epsilon())
 
 
 def normalize_data(data):
@@ -56,6 +71,115 @@ def reshape_data(data, n_dim=2):
         return np.reshape(data, (data.shape[0], data.shape[-1]))
 
 
+def get_phonological_features(setpath):
+    """
+    Get the phonological features from a csv file
+    """
+    phon_dict = {}
+    with open(setpath, 'r') as phonfile:
+        for line in phonfile:
+            line = line.strip().split(',')
+            wav_name = line[0].split('.')[0]
+            data = line[1:]
+            phon_dict[wav_name] = data
+    return phon_dict
+
+
+def get_ys_dict(ypath, speaker_list):
+    """
+    get the set of y values for the data;
+    these come from a csv with 3 cols:
+    stimulus, speaker, average_score
+    ypath: the path to the csv, INCLUDING file name
+    """
+    ys = {}
+    with open(ypath, 'r') as yfile:
+        for line in yfile:
+            line = line.strip().split(",")
+            if line[1] in speaker_list:
+                ys[line[0]] = line[2]
+    return ys
+
+
+def zip_feats_and_ys(feats_dict, ys_dict, normalize=False):
+    """
+    takes the created features dict, ys dit and combines them
+    only takes data that has existing x values
+    also adds zero padding to the features
+    """
+    for item in sorted(feats_dict.keys()):
+        if item not in ys_dict.keys():
+            feats_dict.pop(item)
+    # normalize feats list
+    if normalize:
+        feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
+    else:
+        feats_list = [feats_dict[item] for item in sorted(feats_dict)]
+    # print(feats_list[0])
+    ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
+    padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
+                                                                      dtype='float32')
+    # print(ys_list[0])
+    return zip(padded_feats_list, ys_list)
+
+
+def train_and_predict(model, trainX, trainy, valX, valy, batch=32, num_epochs=100,
+                      cv=False):  # , savefile='phonological_cv_log.csv'):
+    """
+    Train the model
+    batch:              minibatch size
+    num_epochs:         number of epochs
+    """
+    # create early stopping criterion -- stops when val_loss starts to increase
+    if cv:
+        early_stopping = EarlyStopping(monitor='loss', mode='min', patience=10)
+        # save_best = ModelCheckpoint('best_cv.h5', monitor='loss', mode='min')
+    else:
+        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
+    # save best model
+    #     save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
+    # csv_saver = CSVLogger(savefile, append=True, separator=',')
+    model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
+              class_weight=None, validation_data=(valX, valy),
+              callbacks=[early_stopping])  # , save_best , csv_saver])
+    # # get summary of model
+    # model.summary()
+    # sys.exit(1)
+    # get predictions on the dev set
+    y_preds = model.predict(valX, batch_size=batch)
+
+    return valy, y_preds
+
+
+def save_model(model, m_name='best_model.h5'):
+    model.save(m_name)
+
+
+def cv_train_wrapper(model, cv_data, cv_ys, batch, num_epochs):  # , savefile="phonological_cv_log.csv"):
+    """
+    Wrapper for training with k-fold CV
+    returns all the predictions for y along with all gold y values
+    """
+    all_y = []
+    all_preds = []
+    cv_data = OrderedDict(cv_data)
+    cv_ys = OrderedDict(cv_ys)
+    for key, val in cv_data.items():
+        valX = np.asarray(cv_data[key])
+        # print(valX)
+        # print("END OF VAL X AND START OF TRAIN X")
+        valy = np.asarray(cv_ys[key])
+        trainX = np.asarray([item for k in set(cv_data.keys()-[key]) for item in cv_data[k]])
+        # print(trainX)
+        # sys.exit(1)
+        trainy = np.asarray([item for k in set(cv_ys.keys()-[key]) for item in cv_ys[k]])
+        valy, ypreds = train_and_predict(model, trainX, trainy, valX, valy, batch, num_epochs, cv=True)  # , savefile=savefile)
+        all_y.extend(valy)
+        all_preds.extend(ypreds)
+
+    return all_y, all_preds
+
+
 class GetFeatures:
     """
     Takes input files and gets segmental and/or suprasegmental features
@@ -68,20 +192,6 @@ class GetFeatures:
         self.supra_name = None # todo: delete?
         self.segment_name = None # todo: delete?
 
-    def get_ys_dict(self, ypath, speaker_list):
-        """
-        get the set of y values for the data;
-        these come from a csv with 3 cols:
-        stimulus, speaker, average_score
-        ypath: the path to the csv, INCLUDING file name
-        """
-        ys = {}
-        with open(ypath, 'r') as yfile:
-            for line in yfile:
-                line = line.strip().split(",")
-                if line[1] in speaker_list:
-                    ys[line[0]] = line[2]
-        return ys
     #
     # def copy_files_to_single_directory(self, single_dir_path):
     #     """
@@ -118,7 +228,7 @@ class GetFeatures:
                               -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                                 self.savepath, wavname))
                     else:
-                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
+                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS10_paraling.conf -I {1}/{2}\
                               -csvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                              self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?
@@ -157,27 +267,6 @@ class GetFeatures:
         used in get_features_dict
         """
         return dataframe.drop(to_drop, axis=1).to_numpy().tolist()
-
-    def zip_feats_and_ys(self, feats_dict, ys_dict, normalize=False):
-        """
-        takes the created features dict, ys dit and combines them
-        only takes data that has existing x values
-        also adds zero padding to the features
-        """
-        for item in sorted(feats_dict.keys()):
-            if item not in ys_dict.keys():
-                feats_dict.pop(item)
-        # normalize feats list
-        if normalize:
-            feats_list = [normalize_data(feats_dict[item]) for item in sorted(feats_dict)]
-        else:
-            feats_list = [feats_dict[item] for item in sorted(feats_dict)]
-        # print(feats_list[0])
-        ys_list = [float(ys_dict[item]) for item in sorted(ys_dict)]
-        padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
-                                                                          dtype='float32')
-        # print(ys_list[0])
-        return zip(padded_feats_list, ys_list)
 
     # def get_select_cols(self, cols):
     #     """
@@ -403,7 +492,7 @@ class AdaptiveModel:
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
         # model.compile(loss=loss_fx, optimizer=opt, metrics=['acc'])
-        model.compile(loss=loss_fx, optimizer=opt)
+        model.compile(loss=loss_fx, optimizer=opt, metrics=[r_squared])
         return model
 
     def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
@@ -457,7 +546,7 @@ class AdaptiveModel:
         # print("The output layer worked")
         opt = optimizers.Adam(learning_rate=l_rate, beta_1=beta_1, beta_2=beta_2)
         # compile the model
-        model.compile(loss=loss_fx, optimizer=opt)
+        model.compile(loss=loss_fx, optimizer=opt, metrics=[r_squared])
         print("Model compiled successfully")
         return model
 
@@ -471,26 +560,3 @@ class AdaptiveModel:
         # create an lstm layer
         # compile mlp and lstm
         # train the final layer model on the TRAINING output of each model
-
-    def train_and_predict(self, model, trainX, trainy, valX, valy, batch=32, num_epochs=100):
-        """
-        Train the model
-        batch:              minibatch size
-        num_epochs:         number of epochs
-        """
-        # create early stopping criterion -- stops when val_loss starts to increase
-        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=5)
-        # save best model
-        save_best = ModelCheckpoint('best.h5', monitor='val_loss', mode='min')
-        model.fit(trainX, trainy, batch_size=batch, epochs=num_epochs, shuffle=True,
-                       class_weight=None, validation_data=(valX, valy), callbacks=[early_stopping, save_best])
-        # # get summary of model
-        # model.summary()
-        # sys.exit(1)
-        # get predictions on the dev set
-        y_preds = model.predict(valX, batch_size=batch)
-
-        return valy, y_preds
-
-    def save_model(self, model, m_name='best_model.h5'):
-        model.save(m_name)
