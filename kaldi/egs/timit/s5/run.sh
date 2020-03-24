@@ -37,7 +37,7 @@ decode_nj=8
 # echo "                Data & Lexicon & Language Preparation                     "
 # echo ============================================================================
 
-# timit=/home/seongjinpark/research/git_repo/automatic_speech_eval/kaldi/egs/timit/s5/data/timit/TIMIT # @JHU
+timit=/home/seongjinpark/research/git_repo/automatic_speech_eval/kaldi/egs/timit/s5/data/timit/TIMIT # @JHU
 # #timit=/mnt/matylda2/data/TIMIT/timit # @BUT
 
 # local/timit_data_prep.sh $timit || exit 1
@@ -46,7 +46,7 @@ decode_nj=8
 
 # # Caution below: we remove optional silence by setting "--sil-prob 0.0",
 # # in TIMIT the silence appears also as a word in the dictionary and is scored.
-# utils/prepare_lang.sh --sil-prob 0.0 --position-dependent-phones false --num-sil-states 3 \
+# utils/prepare_lang.sh --sil-prob 0.0 --position-dependent-phones true --num-sil-states 3 \
 #  data/local/dict "sil" data/local/lang_tmp data/lang
 
 # local/timit_format_data.sh
@@ -116,58 +116,72 @@ decode_nj=8
 # steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
 #  exp/tri2/graph data/test exp/tri2/decode_test
 
-# echo ============================================================================
-# echo "              tri3 : LDA + MLLT + SAT Training & Decoding                 "
-# echo ============================================================================
+# steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+ # exp/tri2/graph data/asr_dir exp/asr_aligned
 
-# # Align tri2 system with train data.
-# steps/align_si.sh --nj "$train_nj" --cmd "$train_cmd" \
-#  --use-graphs true data/train data/lang exp/tri2 exp/tri2_ali
+echo ============================================================================
+echo "              tri3 : LDA + MLLT + SAT Training & Decoding                 "
+echo ============================================================================
 
-# # From tri2 system, train tri3 which is LDA + MLLT + SAT.
-# steps/train_sat.sh --cmd "$train_cmd" \
-#  $numLeavesSAT $numGaussSAT data/train data/lang exp/tri2_ali exp/tri3
+# Align tri2 system with train data.
+steps/align_si.sh --nj "$train_nj" --cmd "$train_cmd" \
+ --use-graphs true data/train data/lang exp/tri2 exp/tri2_ali
 
-# utils/mkgraph.sh data/lang_test_bg exp/tri3 exp/tri3/graph
+# From tri2 system, train tri3 which is LDA + MLLT + SAT.
+steps/train_sat.sh --cmd "$train_cmd" \
+ $numLeavesSAT $numGaussSAT data/train data/lang exp/tri2_ali exp/tri3
+
+utils/mkgraph.sh data/lang_test_bg exp/tri3 exp/tri3/graph
+
+steps/decode_fmllr.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+ exp/tri3/graph data/dev exp/tri3/decode_dev
+
+steps/decode_fmllr.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+ exp/tri3/graph data/test exp/tri3/decode_test
 
 # steps/decode_fmllr.sh --nj "$decode_nj" --cmd "$decode_cmd" \
-#  exp/tri3/graph data/dev exp/tri3/decode_dev
+ # exp/tri3/graph data/asr_dir exp/asr_aligned
 
-# steps/decode_fmllr.sh --nj "$decode_nj" --cmd "$decode_cmd" \
-#  exp/tri3/graph data/test exp/tri3/decode_test
+echo ============================================================================
+echo "                        SGMM2 Training & Decoding                         "
+echo ============================================================================
 
-# echo ============================================================================
-# echo "                        SGMM2 Training & Decoding                         "
-# echo ============================================================================
+steps/align_fmllr.sh --nj "$train_nj" --cmd "$train_cmd" \
+ data/train data/lang exp/tri3 exp/tri3_ali
 
-# steps/align_fmllr.sh --nj "$train_nj" --cmd "$train_cmd" \
-#  data/train data/lang exp/tri3 exp/tri3_ali
+# exit 0 # From this point you can run Karel's DNN : local/nnet/run_dnn.sh
 
-# # exit 0 # From this point you can run Karel's DNN : local/nnet/run_dnn.sh
+steps/train_ubm.sh --cmd "$train_cmd" \
+ $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm4
 
-# steps/train_ubm.sh --cmd "$train_cmd" \
-#  $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm4
+steps/train_sgmm2.sh --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM \
+ data/train data/lang exp/tri3_ali exp/ubm4/final.ubm exp/sgmm2_4
 
-# steps/train_sgmm2.sh --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM \
-#  data/train data/lang exp/tri3_ali exp/ubm4/final.ubm exp/sgmm2_4
+utils/mkgraph.sh data/lang_test_bg exp/sgmm2_4 exp/sgmm2_4/graph
 
-# utils/mkgraph.sh data/lang_test_bg exp/sgmm2_4 exp/sgmm2_4/graph
+steps/decode_sgmm2.sh --nj "$decode_nj" --cmd "$decode_cmd"\
+ --transform-dir exp/tri3/decode_dev exp/sgmm2_4/graph data/dev \
+ exp/sgmm2_4/decode_dev
 
-# steps/decode_sgmm2.sh --nj "$decode_nj" --cmd "$decode_cmd"\
-#  --transform-dir exp/tri3/decode_dev exp/sgmm2_4/graph data/dev \
-#  exp/sgmm2_4/decode_dev
-
-# steps/decode_sgmm2.sh --nj "$decode_nj" --cmd "$decode_cmd"\
-#  --transform-dir exp/tri3/decode_test exp/sgmm2_4/graph data/test \
-#  exp/sgmm2_4/decode_test
+steps/decode_sgmm2.sh --nj "$decode_nj" --cmd "$decode_cmd"\
+ --transform-dir exp/tri3/decode_test exp/sgmm2_4/graph data/test \
+ exp/sgmm2_4/decode_test
 
 echo ============================================================================
 echo "                    MMI + SGMM2 Training & Decoding                       "
 echo ============================================================================
 
+steps/decode_sgmm2.sh --nj "$decode_nj" --cmd "$decode_cmd"\
+ --transform-dir exp/tri3/decode_test exp/sgmm2_4/graph data/test \
+ exp/sgmm2_4/decode_test
+
 steps/align_sgmm2.sh --nj "$train_nj" --cmd "$train_cmd" \
  --transform-dir exp/tri3_ali --use-graphs true --use-gselect true \
  data/train data/lang exp/sgmm2_4 exp/sgmm2_4_ali
+
+# steps/align_sgmm2.sh --nj "$train_nj" --cmd "$train_cmd" \
+#    --use-graphs true --use-gselect true \
+#    data/asr_dir data/lang exp/sgmm2_4 exp/asr_aligned
 
 steps/make_denlats_sgmm2.sh --nj "$train_nj" --sub-split "$train_nj" \
  --acwt 0.2 --lattice-beam 10.0 --beam 18.0 \
@@ -230,8 +244,8 @@ echo ===========================================================================
 echo "               DNN Hybrid Training & Decoding (Karel's recipe)            "
 echo ============================================================================
 
-# local/nnet/run_dnn.sh
-#local/nnet/run_autoencoder.sh : an example, not used to build any system,
+local/nnet/run_dnn.sh
+# local/nnet/run_autoencoder.sh : an example, not used to build any system,
 
 echo ============================================================================
 echo "                    Getting Results [see RESULTS file]                    "

@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import sys
+
 def sum_list(my_list): 
 	sum_list = 0
 	for i in my_list:
@@ -45,16 +47,21 @@ def rPVI(my_list):
 	return(rPVI)
 
 import os
-path = "../align_data"
+path = sys.argv[1]
 files = os.listdir(path)
 
 my_dict = {}
 
+<<<<<<< HEAD
 out = open("../results/rhythm.csv", "w")
 out.write("fileName,syllpersec,%V,deltaV,deltaC,VarcoV,VarcoC,nPVI-V,rPVI-C\n")
+=======
+out = open(os.path.join(sys.argv[2], "rhythm.csv"), "w")
+out.write("fileName,%V,deltaV,deltaC,VarcoV,VarcoC,nPVI-V,rPVI-C,SyllPerSec,%Pause\n")
+>>>>>>> refs/remotes/origin/master
 
 for file in files:
-	if (file[-4:] == ".PHN"):
+	if (file[-4:] == ".txt"):
 		fileName = path + "/" + file
 		my_lab = open(fileName, "r")
 		data = my_lab.readlines()
@@ -63,6 +70,7 @@ for file in files:
 		consList = []
 
 		total_dur = 0
+		pause_dur = 0
 
 		vowel = ["a", "e", "i", "o", "u"]
 
@@ -73,7 +81,7 @@ for file in files:
 
 			phone = items[2]
 
-			duration = (int(items[1]) - int(items[0])) / (16000)
+			duration = (float(items[1]) - float(items[0]))
 
 			total_dur += duration
 
@@ -81,6 +89,8 @@ for file in files:
 				vowlList.append(duration)
 			elif(phone != "sil"):
 				consList.append(duration)
+			else:
+				pause_dur += duration
 
 		sylpersec = total_dur / len(vowlList)
 		perc_v = (sum_list(vowlList) / total_dur) * 100
@@ -90,7 +100,13 @@ for file in files:
 		varco_c = 100 * delta_c / mean_list(consList)
 		nPVI_v = nPVI(vowlList)
 		rPVI_c = rPVI(consList)
+		sylpersec = len(vowlList) / total_dur
+		perc_pause = (pause_dur / total_dur) * 100
 
+<<<<<<< HEAD
 		out.write("%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n" % (file,sylpersec,perc_v,delta_v,delta_c,varco_v,varco_c,nPVI_v,rPVI_c))
+=======
+		out.write("%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n" % (file,perc_v,delta_v,delta_c,varco_v,varco_c,nPVI_v,rPVI_c,sylpersec,perc_pause))
+>>>>>>> refs/remotes/origin/master
 
 out.close()
