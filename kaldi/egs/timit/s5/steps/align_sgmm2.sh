@@ -12,7 +12,7 @@
 # Begin configuration section.
 stage=0
 nj=8
-cmd=utils/run.pl
+cmd=
 use_graphs=false # use graphs from srcdir
 use_gselect=false # use gselect info from srcdir [regardless, we use
    # Gaussian-selection info, we might have to compute it though.]
@@ -26,7 +26,7 @@ transform_dir=  # directory to find fMLLR transforms in.
 
 echo "$0 $@"  # Print the command line for logging
 
-[ -f ${KALDI_PATH}/path.sh ] && . path.sh # source the path.
+[ -f ${KALDI_INSTRUCTIONAL_PATH}/path.sh ] && . ./path.sh # source the path.
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
@@ -104,7 +104,7 @@ if $use_graphs; then
     echo "$0: you specified --use-graphs true, but #jobs mismatch." && exit 1;
   [ ! -f $srcdir/fsts.1.gz ] && echo "No graphs in $srcdir" && exit 1;
   graphdir=$srcdir
-  ln.pl $srcdir/fsts.*.gz $dir
+  utils/ln.pl $srcdir/fsts.*.gz $dir
 else
   graphdir=$dir
   if [ $stage -le 0 ]; then
@@ -123,7 +123,7 @@ if $use_gselect; then
   [ ! -f $srcdir/gselect.1.gz ] && echo "No gselect info in $srcdir" && exit 1;
   graphdir=$srcdir
   gselect_opt="--gselect=ark,s,cs:gunzip -c $srcdir/gselect.JOB.gz|"
-  ln.pl $srcdir/gselect.*.gz $dir
+  utils/ln.pl $srcdir/gselect.*.gz $dir
 else
   graphdir=$dir
   if [ $stage -le 1 ]; then
