@@ -84,6 +84,23 @@ def get_phonological_features(setpath):
             phon_dict[wav_name] = data
     return phon_dict
 
+def get_ys_dict_all(ypath, speaker_list):
+    """
+    get the set of y values for the data;
+    these come from a csv with 3 cols:
+    score, stimuli, wav
+    ypath: the path to the csv, INCLUDING file name
+    """
+    ys = {}
+    with open(ypath, 'r') as yfile:
+        for line in yfile:
+            line = line.strip().split(",")
+            (speaker, sentence) = line[1].split("_")
+
+            if speaker in speaker_list:
+                ys[line[1]] = line[0]
+    return ys
+
 
 def get_ys_dict(ypath, speaker_list):
     """

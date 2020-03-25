@@ -23,7 +23,7 @@ def calc_r_squared(valy, y_preds):
 
 
 # create an instance of GetFeatures class
-phonetic_test = modeler.GetFeatures("../../SJP_JC_Audio/wavs", "~/opensmile-2.3.0", "../../SJP_JC_Audio/IS10_smallset")
+phonetic_test = modeler.GetFeatures("../audio/wavs", "~/opensmile-2.3.0", "../audio/IS10_smallset")
 # uncomment to extract features for first time use
 # phonetic_test.extract_features()
 
@@ -73,9 +73,9 @@ acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frame
 speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
 # speaker_list = ["S07"]  # fixme: for testing--this doesn't actually work as expected, so something is hard-coded
 
-y_paths = ["../../SJP_JC_Audio/perception_results/accented_avgs.csv",
-           "../../SJP_JC_Audio/perception_results/fluency_avgs.csv",
-           "../../SJP_JC_Audio/perception_results/comp_avgs.csv"]
+y_paths = ["../data/perception_results/accented_avgs.csv",
+           "../data/perception_results/fluency_avgs.csv",
+           "../data/perception_results/comp_avgs.csv"]
 
 for fpath in y_paths:
     # read in y data
@@ -101,7 +101,7 @@ for fpath in y_paths:
     shape = unzipped_feats.shape
 
     # create instance of class AdaptiveModel
-    adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../../SJP_JC_Audio/IS10_smallset")
+    adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../audio/IS10_smallset")
 
     # split data into datasets
     cv_data, cv_ys = adapt.split_data_for_cv(k=10)
@@ -125,12 +125,12 @@ for fpath in y_paths:
     # total_stats = [['mse', 'r_squared', 'number_lstm_units', 'number_lstm_layers', 'number_connected_units',
     #                 'batch_size', 'learning_rate']]
 
-    if fpath == "../../SJP_JC_Audio/perception_results/fluency_avgs.csv":
-        wfile = open('../../SJP_JC_Audio/gridsearch/phonetic_IS10-smallset_lstm_fluency.csv', 'a+')
-    elif fpath == "../../SJP_JC_Audio/perception_results/comp_avgs.csv":
-        wfile = open('../../SJP_JC_Audio/gridsearch/phonetic_IS10-smallset_lstm_comprehensibility.csv', 'a+')
+    if fpath == "../data/perception_results/fluency_avgs.csv":
+        wfile = open('../data/gridsearch/phonetic_IS10-smallset_lstm_fluency.csv', 'a+')
+    elif fpath == "../data/perception_results/comp_avgs.csv":
+        wfile = open('../data/gridsearch/phonetic_IS10-smallset_lstm_comprehensibility.csv', 'a+')
     else:
-        wfile = open('../../SJP_JC_Audio/gridsearch/phonetic_IS10-smallset_lstm_accentedness.csv', 'a+')
+        wfile = open('../data/gridsearch/phonetic_IS10-smallset_lstm_accentedness.csv', 'a+')
 
     wfile.write("mse,r_squared,number_lstm_units,number_lstm_layers,number_connected_units,batch_size,learning_rate\n")
     wfile.flush()
@@ -147,8 +147,7 @@ for fpath in y_paths:
                         print("Batch size: " + str(b))
                         print("Learning rate: " + str(l_r))
 
-                        model = adapt.lstm_model(n_lstm=n_l, output_size=1, l_rate=l_r, n_lstm_units=n_l_u, n_connected_units=n_c_u,
-                                         act="tanh")  # relu doesn't work with this dataset
+                        model = adapt.lstm_model(n_lstm=n_l, output_size=1, l_rate=l_r, n_lstm_units=n_l_u, n_connected_units=n_c_u, act="tanh")  # relu doesn't work with this dataset
 
                         valy, y_preds = modeler.cv_train_wrapper(model, cv_data, cv_ys, batch=b, num_epochs=100)
                         # valy, y_preds = modeler.train_and_predict(model, trainX, trainy, valX, valy, batch=b)
