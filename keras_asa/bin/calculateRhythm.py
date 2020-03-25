@@ -52,8 +52,13 @@ files = os.listdir(path)
 
 my_dict = {}
 
+<<<<<<< HEAD
+out = open("../results/rhythm.csv", "w")
+out.write("fileName,syllpersec,%V,deltaV,deltaC,VarcoV,VarcoC,nPVI-V,rPVI-C\n")
+=======
 out = open(os.path.join(sys.argv[2], "rhythm.csv"), "w")
 out.write("fileName,%V,deltaV,deltaC,VarcoV,VarcoC,nPVI-V,rPVI-C,SyllPerSec,%Pause\n")
+>>>>>>> refs/remotes/origin/master
 
 for file in files:
 	if (file[-4:] == ".txt"):
@@ -87,6 +92,7 @@ for file in files:
 			else:
 				pause_dur += duration
 
+		sylpersec = total_dur / len(vowlList)
 		perc_v = (sum_list(vowlList) / total_dur) * 100
 		delta_v = stdv_list(vowlList)
 		delta_c = stdv_list(consList)
@@ -97,6 +103,10 @@ for file in files:
 		sylpersec = len(vowlList) / total_dur
 		perc_pause = (pause_dur / total_dur) * 100
 
+<<<<<<< HEAD
+		out.write("%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n" % (file,sylpersec,perc_v,delta_v,delta_c,varco_v,varco_c,nPVI_v,rPVI_c))
+=======
 		out.write("%s,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n" % (file,perc_v,delta_v,delta_c,varco_v,varco_c,nPVI_v,rPVI_c,sylpersec,perc_pause))
+>>>>>>> refs/remotes/origin/master
 
 out.close()
