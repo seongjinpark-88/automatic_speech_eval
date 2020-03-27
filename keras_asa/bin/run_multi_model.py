@@ -71,7 +71,7 @@ acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frame
 
 # select participants to use
 speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
-# speaker_list = ["S07"]  # fixme: for testing--this doesn't actually work as expected, so something is hard-coded
+ㄱ# speaker_list = ["S07"]  # fixme: for testing--this doesn't actually work as expected, so something is hard-coded
 
 y_paths = ["../data/perception_results/accented_avgs.csv",
            "../data/perception_results/fluency_avgs.csv",
