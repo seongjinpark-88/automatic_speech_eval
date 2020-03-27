@@ -1,10 +1,11 @@
 require(Metrics)
 require(ggplot2)
 
-setwd("/Users/seongjinpark/PhD/Diss/automatic_speech_eval/keras_asa")
+# setwd("/Users/seongjinpark/PhD/Diss/automatic_speech_eval/keras_asa")
+setwd("/home/seongjinpark/research/git_repo/automatic_speech_eval/keras_asa")
 
-###### ANALYZE CV RESUTS (ACCENT) ######
-mel_acc_data = read.csv("./results/accented_mel_10CV.txt", sep = "\t")
+###### ANALYZE CV RESUTS (COMP) ######
+mel_acc_data = read.csv("./results/mfcc_10CV_comp.txt", sep = "\t")
 summary(mel_acc_data)
 colnames(mel_acc_data) = c("CV", "Stimuli", "true", "pred")
 mel_acc_data$CV = as.factor(mel_acc_data$CV)
@@ -15,17 +16,32 @@ cor.test(mel_acc_data$true, mel_acc_data$pred)
 summary(lm(true ~ pred, mel_acc_data))
 
 
+###### ANALYZE CV RESUTS (ACCENT) ######
+mel_acc_data = read.csv("./results/accented_mel_10CV.txt", sep = "\t")
+mfcc_acc_data = read.csv("./results/accented_mfcc_10CV.txt", sep = "\t")
+
+summary(mel_acc_data)
+colnames(mfcc_acc_data) = c("CV", "Stimuli", "true", "pred")
+mfcc_acc_data$CV = as.factor(mfcc_acc_data$CV)
+summary(mfcc_acc_data)
+View(mel_data)
+mse(mfcc_acc_data$true, mfcc_acc_data$pred)
+cor.test(mel_acc_data$true, mel_acc_data$pred)
+summary(lm(true ~ pred, mfcc_acc_data))
+
+
 
 ###### ANALYZE CV RESUTS (FLUENCY) ######
 mel_data = read.csv("./results/mel_10CV_fluency_wL1.txt", sep = "\t")
+mfcc_flu_data = read.csv("./results/mfcc_10CV_fluency_wL1.txt", sep = "\t")
 summary(mel_data)
-colnames(mel_data) = c("CV", "Stimuli", "language", "true", "pred")
-mel_data$CV = as.factor(mel_data$CV)
-summary(mel_data)
-View(mel_data)
-mse(mel_data$true, mel_data$pred)
-cor.test(mel_data$true, mel_data$pred)
-summary(lm(true ~ pred, mel_data))
+colnames(mfcc_flu_data) = c("CV", "Stimuli", "language", "true", "pred")
+mfcc_flu_data$CV = as.factor(mfcc_flue_data$CV)
+summary(mfcc_flu_data)
+View(mfcc_flu_data)
+mse(mfcc_flu_data$true, mfcc_flu_data$pred)
+cor.test(mfcc_flu_data$true, mfcc_flu_data$pred)
+summary(lm(true ~ pred, mfcc_flu_data))
 
 eng_mel_data = mel_data[mel_data$language == "ENG", ]
 kor_mel_data = mel_data[mel_data$language == "KOR", ]
