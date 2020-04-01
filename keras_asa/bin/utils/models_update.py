@@ -18,10 +18,29 @@ import tensorflow as tf
 import keras
 from keras import backend as K
 from keras import optimizers
+
+from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from keras.models import Sequential, Model, load_model
 from keras.layers import Input, Dense, Dropout, Flatten, concatenate
 from keras.layers import Conv2D, MaxPooling2D, LSTM, GRU, Bidirectional
 from keras.utils import to_categorical
+
+from sklearn.model_selection import KFold
+from sklearn.preprocessing import MinMaxScaler
+
+def normalize_data(data):
+    """
+    Normalize the input data to try to avoid NaN output + loss
+    From: https://machinelearningmastery.com/how-to-improve-neural-network-\
+    stability-and-modeling-performance-with-data-scaling/
+    """
+    scaler = MinMaxScaler()
+    # fit and transform in one step
+    normalized = scaler.fit_transform(data)
+    # inverse transform
+    inverse = scaler.inverse_transform(normalized)
+    # return normalized
+    return inverse
 
 def pad_feats(feats_list, normalize=False):
     """
@@ -31,11 +50,17 @@ def pad_feats(feats_list, normalize=False):
     """
 
     # feats_list = [feats_dict[item] for item in sorted(feats_dict)]
+
+    # if normalize:
+    #     feats_list = [normalize_data(item) for item in feats_list]
+
+    if normalize:
+        feats_list = [normalize_data(item) for item in feats_list]
     
     padded_feats_list = tf.keras.preprocessing.sequence.pad_sequences(feats_list, padding='post',
                                                                       dtype='float32')
-    # print(ys_list[0])
-    return padded_feats_list
+
+    return np.array(padded_feats_list)
 
 def r_squared(y_true, y_pred):
     """
@@ -44,7 +69,7 @@ def r_squared(y_true, y_pred):
     """
     ss_res = K.sum(K.square(y_true-y_pred))
     ss_tot = K.sum(K.square(y_true - K.mean(y_true)))
-    return 1 - ss_res / (ss_tot + K.epsilon())
+    return 1 - (ss_res / (ss_tot + K.epsilon()))
 
 def get_audio_features(audio_path):
     """
@@ -119,7 +144,9 @@ def get_data(data_file, wav2idx, feature_dict, acoustic = False):
     for i in range(1, len(data)):
         line = data[i].rstrip()
 
-        accented, stim, wav_name = line.split(",")
+        # accented, stim, wav_name = line.split(",")
+        stim, spk, accented = line.split(",")
+        wav_name = stim + ".wav"
         wav_idx = wav2idx[wav_name]
         X_wav.append(wav_idx)
         if acoustic == False:
@@ -131,7 +158,7 @@ def get_data(data_file, wav2idx, feature_dict, acoustic = False):
             # x_data = np.reshape(x_data, np.shape(x_data)[1])
             X.append(x_data)
 
-        Y.append(int(accented)-1)
+        Y.append(float(accented)-1)
 
     X = np.array(X)
     Y = np.array(Y)
@@ -148,10 +175,10 @@ def get_cv_index(cv_number, x_input):
     return kf.split(x_input)
 
 class Models:
-    def __init__(self, X, name):
-        if len(np.shape(X)) > 2:
+    def __init__(self, X, name, model_type):
+        if model_type == "lstm":
             self.input_shape = (np.shape(X)[1], np.shape(X)[2])
-        elif len(np.shape(X)) == 2:
+        elif model_type == "mlp":
             self.input_shape = (np.shape(X)[-1],)
         else:
             print("Undefined input shape")
@@ -174,7 +201,7 @@ class Models:
 
         self.mlp_input = Input(shape = self.input_shape, name=self.name)
 
-        second_units = n_connected_units / 2
+        second_units = int(n_connected_units / 2)
         
         output_1 = Dense(n_connected_units, activation = act)(self.mlp_input)
         dropout_1 = Dropout(dropout)(output_1)
@@ -201,10 +228,12 @@ class Models:
 
         self.lstm_input = Input(shape = self.input_shape, name=self.name)
   
-        output_1 = Bidirectional(LSTM(n_lstm_units))(self.lstm_input)
-        # output_2 = Bidirectional(LSTM(n_lstm_units))(output_1)
+        output_1 = Bidirectional(LSTM(n_lstm_units, activation = act, 
+            dropout = dropout, recurrent_dropout = dropout, return_sequences = True))(self.lstm_input)
+        output_2 = Bidirectional(LSTM(n_lstm_units, activation = act, 
+            dropout = dropout, recurrent_dropout = dropout, return_sequences = False))(output_1)
         
-        output_3 = Dense(n_connected_units, activation = act)(output_1)
+        output_3 = Dense(n_connected_units, activation = 'tanh')(output_2)
         dropout_3 = Dropout(dropout)(output_3)
         return dropout_3
 
@@ -220,19 +249,36 @@ class MergeModels:
         self.input_layers = input_layers
 
     def final_layers(self, n_connected = 1, n_connected_units = 36, 
-        dropout = 0.2, act = 'relu', output_act = 'linear', loss_fx = 'mse'):
+        dropout = 0.2, act = 'tanh', output_act = 'linear', loss_fx = 'mse'):
+        second_units = int(n_connected_units / 2)
+        
         dense_1 = Dense(n_connected_units, activation = act)(self.merged_layers)
         dropout_1 = Dropout(dropout)(dense_1)
+
+        # dense_2 = Dense(second_units, activation = act)(dropout_1)
+        # dropout_2 = Dropout(dropout)(dense_2)
+        
         self.final_output = Dense(1, activation = output_act, name = 'final_output')(dropout_1)
 
-    def compile_model(self, l_rate = 0.001, loss_fx='mse'):
+    def compile_model(self, l_rate = 0.001, loss_fx='mse', beta_1 = 0.9, beta_2 = 0.999):
         self.model = Model(inputs = self.input_layers, outputs = [self.final_output])
-        self.model.compile(optimizer='adam', loss = loss_fx, metrics = ['mse', r_squared])
+        # opt = optimizers.Adam(learning_late = l_rate, beta_1 = beta_1, beta_2 = beta_2)
+        self.model.compile(optimizer="adam", loss = loss_fx, metrics = ['mse', r_squared])
         self.model.summary()
 
-    def train_model(self, epochs = 100, batch_size = 64, input_feature = None, output_label = None):
+    def train_model(self, epochs = 100, batch_size = 64, input_feature = None, 
+        output_label = None, validation = None, model_name = None):
+
+        early_stopping = EarlyStopping(monitor = 'loss', mode = 'min', patience = 10)
+
+        model_name = model_name + ".h5"
+
+        save_best = ModelCheckpoint(model_name, monitor = 'loss', mode = 'min')
+
         self.history = self.model.fit(input_feature, {'final_output': output_label}, 
-            epochs = epochs, batch_size = batch_size, verbose = 1)
+            epochs = epochs, batch_size = batch_size, shuffle = True, 
+            validation_data = validation, verbose = 1, 
+            callbacks = [early_stopping, save_best])
         return self.history
 
     def save_model(self, save_path):
@@ -298,7 +344,7 @@ class GetFeatures:
                               -lldcsvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                                 self.savepath, wavname))
                     else:
-                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS10_paraling.conf -I {1}/{2}\
+                        os.system("{0}/SMILExtract -loglevel 0 -C {0}/config/IS09_emotion.conf -I {1}/{2}\
                               -csvoutput {3}/{4}.csv".format(self.smilepath, self.apath, f,
                                                              self.savepath, wavname))
                     # self.segment_name = output_name # todo: delete?

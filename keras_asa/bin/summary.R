@@ -4,6 +4,18 @@ require(ggplot2)
 # setwd("/Users/seongjinpark/PhD/Diss/automatic_speech_eval/keras_asa")
 setwd("/home/seongjinpark/research/git_repo/automatic_speech_eval/keras_asa")
 
+###### ANALYZE CV RESUTS (MERGE) ######
+merge_data = read.csv(file.choose(), sep = "\t")
+summary(merge_data)
+colnames(merge_data) = c("CV", "Stimuli", "true", "pred")
+merge_data$CV = as.factor(merge_data$CV)
+summary(merge_data)
+mse(merge_data$true, merge_data$pred)
+cor.test(mel_acc_data$true, mel_acc_data$pred)
+summary(lm(true ~ pred, merge_data))
+
+
+
 ###### ANALYZE CV RESUTS (COMP) ######
 mel_acc_data = read.csv("./results/mfcc_10CV_comp.txt", sep = "\t")
 summary(mel_acc_data)
