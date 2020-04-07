@@ -13,6 +13,12 @@ import pandas as pd
 
 import numpy as np
 
+import random
+
+seed = 888
+random.seed(seed)
+np.random.seed(seed)
+
 import tensorflow as tf
 
 import keras
@@ -164,7 +170,7 @@ def get_data(data_file, wav2idx, feature_dict, acoustic = False):
     Y = np.array(Y)
     X_wav = np.array(X_wav)
 
-    # print(Y[:10])
+    print(Y[:10])
 
     return X, Y, X_wav
 
@@ -186,7 +192,7 @@ class Models:
 
         self.name = name
 
-    def mlp_model(self, n_connected_units=32, dropout=0.2, act='relu'):
+    def mlp_model(self, n_connected_units=32, dropout=0.2, act='tanh'):
         """
         Initialize the MLP model
         n_connected:            the number of mlp layers
@@ -207,9 +213,10 @@ class Models:
         dropout_1 = Dropout(dropout)(output_1)
         output_2 = Dense(second_units, activation = act)(dropout_1)
         dropout_2 = Dropout(dropout)(output_2)
-        return dropout_2
+        final_dense = Dense(1, activation = 'linear')(dropout_2)
+        return final_dense
 
-    def bi_lstm_model(self, n_lstm_units=512, dropout=0.2, n_connected_units=32, act='relu'):
+    def bi_lstm_model(self, n_lstm_units=512, dropout=0.2, n_connected_units=32, act='tanh'):
         """
         Initialize the LSTM-based model
         n_lstm:                 number of lstm layers
@@ -235,7 +242,8 @@ class Models:
         
         output_3 = Dense(n_connected_units, activation = 'tanh')(output_2)
         dropout_3 = Dropout(dropout)(output_3)
-        return dropout_3
+        final_dense = Dense(1, activation = 'linear')(dropout_3)
+        return final_dense
 
 
 class MergeModels:
@@ -252,13 +260,13 @@ class MergeModels:
         dropout = 0.2, act = 'tanh', output_act = 'linear', loss_fx = 'mse'):
         second_units = int(n_connected_units / 2)
         
-        dense_1 = Dense(n_connected_units, activation = act)(self.merged_layers)
-        dropout_1 = Dropout(dropout)(dense_1)
+        # dense_1 = Dense(n_connected_units, activation = act)(self.merged_layers)
+        # dropout_1 = Dropout(dropout)(dense_1)
 
         # dense_2 = Dense(second_units, activation = act)(dropout_1)
         # dropout_2 = Dropout(dropout)(dense_2)
         
-        self.final_output = Dense(1, activation = output_act, name = 'final_output')(dropout_1)
+        self.final_output = Dense(1, activation = output_act, name = 'final_output')(self.merged_layers)
 
     def compile_model(self, l_rate = 0.001, loss_fx='mse', beta_1 = 0.9, beta_2 = 0.999):
         self.model = Model(inputs = self.input_layers, outputs = [self.final_output])
@@ -269,15 +277,16 @@ class MergeModels:
     def train_model(self, epochs = 100, batch_size = 64, input_feature = None, 
         output_label = None, validation = None, model_name = None):
 
-        early_stopping = EarlyStopping(monitor = 'loss', mode = 'min', patience = 10)
+        early_stopping = EarlyStopping(monitor = 'val_loss', mode = 'min', patience = 10)
 
         model_name = model_name + ".h5"
 
-        save_best = ModelCheckpoint(model_name, monitor = 'loss', mode = 'min')
+        save_best = ModelCheckpoint(model_name, monitor = 'val_loss', mode = 'min')
 
         self.history = self.model.fit(input_feature, {'final_output': output_label}, 
             epochs = epochs, batch_size = batch_size, shuffle = True, 
-            validation_data = validation, verbose = 1, 
+            # validation_data = validation, verbose = 1, 
+            validation_split = 0.1, verbose = 1,
             callbacks = [early_stopping, save_best])
         return self.history
 

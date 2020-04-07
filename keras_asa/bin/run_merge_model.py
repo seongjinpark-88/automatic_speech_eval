@@ -43,11 +43,11 @@ acoustic_features = phonetic_test.get_features_dict()
 #                                                                   "lspFreq_sma_de[6]", "lspFreq_sma_de[7]"])
 
 # Get mfccs and melspec features
-X, Y, X_wav = models_update.get_data("../data/perception_results/accented_avgs.csv", 
+X, Y, X_wav = models_update.get_data("../data/perception_results/fluency_avgs.csv", 
     wav2idx, melspec_dict, acoustic = False)
 
 # Get acoustic features
-X_phon, Y, X_wav = models_update.get_data("../data/perception_results/accented_avgs.csv", 
+X_phon, Y, X_wav = models_update.get_data("../data/perception_results/fluency_avgs.csv", 
     wav2idx, acoustic_features, acoustic = True)
 
 # Reshape data for lstm
@@ -85,10 +85,21 @@ for train_index, test_index in CV_IDX:
 
     # Create test and training data
     print("Cross-validation idx: ", cv_idx)
+
     X_train, X_test = X[train_index], X[test_index]
     X_train_phon, X_test_phon = X_phon[train_index], X_phon[test_index]
     X_train_wav, X_test_wav = X_wav[train_index], X_wav[test_index]
     y_train, y_test = Y[train_index], Y[test_index]
+
+    # inner_cv = models_update.get_cv_index(10, X_train)
+    # inner_idx = 1
+
+    # for tr_idx, te_idx in inner_cv:
+    #     print("Cross-validation idx: %d-%d" % (cv_idx, inner_idx))
+    #     X_inner_tr, X_inner_val = X_train[tr_idx], X_train[te_idx]
+    #     X_inner_ph_tr, X_inner_ph_val = X_train_phon[tr_index], X_train_phon[te_index]
+    #     X_inner_wav_tr, X_inner_wav_val = X_train_wav[tr_index], X_train_wav[te_index]
+    #     y_inner_tr, y_inner_te = y_train[tr_index], y_train[te_index]
 
     # Create acoustic model
     phon_model = models_update.Models(X_train_phon, "phonetic_model", model_type = "mlp")
@@ -147,7 +158,9 @@ for train_index, test_index in CV_IDX:
     print("SCORE: ", scores)
 
 # Save 10CV results
-with open("../results/raw_phon_10CV_flu.txt", "w") as output:
+with open("../results/raw_phon_10CV_flu_wVal.txt", "w") as output:
+    header = "CV\tstimulus\ttrue\tpred\n"
+    output.write(header)
     for prediction in CV_prediction:
         output.write(prediction)
 

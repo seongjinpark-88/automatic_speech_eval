@@ -1,18 +1,35 @@
 require(Metrics)
 require(ggplot2)
+require(dplyr)
+require(stringr)
 
 # setwd("/Users/seongjinpark/PhD/Diss/automatic_speech_eval/keras_asa")
 setwd("/home/seongjinpark/research/git_repo/automatic_speech_eval/keras_asa")
 
 ###### ANALYZE CV RESUTS (MERGE) ######
-merge_data = read.csv(file.choose(), sep = "\t")
+
+merge_data = read.csv("results/raw_phon_10CV_comp.txt", sep = "\t")
 summary(merge_data)
-colnames(merge_data) = c("CV", "Stimuli", "true", "pred")
+colnames(merge_data) = c("CV", "stimulus", "true", "pred")
 merge_data$CV = as.factor(merge_data$CV)
+merge_data$stimulus = str_replace(merge_data$stimulus, ".wav", "")
+merge_data$stimulus = as.factor(merge_data$stimulus)
 summary(merge_data)
-mse(merge_data$true, merge_data$pred)
+
+golden_data = read.csv("data/perception_results/comp_avgs.csv")
+summary(golden_data)
+length(golden_data$stimulus)
+
+golden_data = rename(golden_data, stimulus = stimulus)
+merge_data = left_join(merge_data, golden_data)
+
+merge_data$avg_score = merge_data$avg_score - 1
+summary(merge_data)
+
+
+mse(merge_data$avg_score, merge_data$pred)
 cor.test(mel_acc_data$true, mel_acc_data$pred)
-summary(lm(true ~ pred, merge_data))
+summary(lm(avg_score ~ pred, merge_data))
 
 
 
