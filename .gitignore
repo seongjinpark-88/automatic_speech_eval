@@ -153,7 +153,7 @@ keras_asa/audio
 keras_asa/opensmile_data
 keras_asa/bin/logs/*
 keras_asa/bin/.ipynb_checkpoints/*
-keras_asa/data
+keras_asa/data/*
 keras_asa/results
 
 # audio and data files
