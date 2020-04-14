@@ -13,7 +13,12 @@ phonetic_test = models_update.GetFeatures("../audio/wavs", "~/opensmile-2.3.0", 
 
 # phonetic_test.extract_features(summary_stats=True)
 
+phono_features = models_update.get_phonological_features("../audio/rhythm.csv") # or your path
+
 acoustic_features = phonetic_test.get_features_dict()
+
+# feature set to use with combined summary-phonetic + phonological model
+combined_feats = models_update.combine_feat_types(phono_features, acoustic_features)
 
 # acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frameTime',
 #                                                                   "mfcc_sma[0]", "mfcc_sma[1]", "mfcc_sma[2]",
