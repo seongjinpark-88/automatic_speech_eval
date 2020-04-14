@@ -72,16 +72,18 @@ class lstmMtl:
 
         output_3 = Dense(n_connected_units, activation='tanh')(output_2)
         dropout_3 = Dropout(dropout)(output_3)
+        output_4 = Dense(256, activation='relu')(dropout_3)
+        dropout_4 = Dropout(dropout)(output_4)
 
-        self.acc_output = Dense(1, activation='linear', name='acc_output')(dropout_3)
-        self.flu_output = Dense(1, activation='linear', name='flu_output')(dropout_3)
-        self.com_output = Dense(1, activation='linear', name='com_output')(dropout_3)
+        self.acc_output = Dense(1, activation='linear', name='acc_output')(dropout_4)
+        self.flu_output = Dense(1, activation='linear', name='flu_output')(dropout_4)
+        self.com_output = Dense(1, activation='linear', name='com_output')(dropout_4)
 
         self.model = Model(inputs=self.lstm_input, outputs=[self.acc_output, self.flu_output, self.com_output])
 
         adam = optimizers.Adam(learning_rate=l_rate)
 
-        self.model.compile(optimizer=adam, loss=[loss_fx, loss_fx, loss_fx], metrics={'acc_output': 'mse'})
+        self.model.compile(optimizer=adam, loss=[loss_fx, loss_fx, loss_fx], metrics={'acc_output': loss_fx})
         self.model.summary()
 
         # return self.model
@@ -89,17 +91,17 @@ class lstmMtl:
     def train_model(self, epochs=100, batch_size=64, input_feature=None,
                     output_label=None, validation=None, model_name=None):
 
-        early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
+        # early_stopping = EarlyStopping(monitor='val_loss', mode='min', patience=10)
+        early_stopping = EarlyStopping(monitor='val_acc_output_loss', mode='min', patience=10)
+        # model_name = model_name + ".h5"
 
-        model_name = model_name + ".h5"
-
-        save_best = ModelCheckpoint(model_name, monitor='val_loss', mode='min')
+        # save_best = ModelCheckpoint(model_name, monitor='val_loss', mode='min')
 
         self.history = self.model.fit(input_feature, output_label,
                                       epochs=epochs, batch_size=batch_size, shuffle=True,
                                       # validation_data = validation, verbose = 1,
                                       validation_split=0.1, verbose=1,
-                                      callbacks=[early_stopping, save_best])
+                                      callbacks=[early_stopping])
         return self.history
 
     def predict_model(self, input_feature=None, prediction_type=0):

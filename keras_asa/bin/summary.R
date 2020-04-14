@@ -8,7 +8,8 @@ setwd("/home/seongjinpark/research/git_repo/automatic_speech_eval/keras_asa")
 
 ###### ANALYZE CV RESUTS (MERGE) ######
 
-merge_data = read.csv("results/raw_phon_10CV_flu_wVal.txt", sep = "\t")
+# merge_data = read.csv("results/raw_phon_10CV_flu_wVal.txt", sep = "\t")
+merge_data = read.csv("results/mel_10CV_acc_dropout_Mtl.txt", sep = "\t")
 summary(merge_data)
 colnames(merge_data) = c("CV", "stimulus", "true", "pred")
 merge_data$CV = as.factor(merge_data$CV)

@@ -20,17 +20,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e8313f9-6bb6-4204-bd06-12e5e79d3341" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/rSettings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/keras_asa/bin/utils/lstmCrfMtl.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/automatic_speech_eval.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/automatic_speech_eval.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/keras_asa/.RData" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/.RData" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/keras_asa/.Rhistory" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/.Rhistory" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/keras_asa/bin/run_merge_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/bin/run_merge_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/keras_asa/bin/lstmMtl.h5" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/bin/lstmMtl.h5" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/keras_asa/bin/run_raw_model_cv.py" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/bin/run_raw_model_cv.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/keras_asa/bin/summary.R" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/bin/summary.R" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/keras_asa/bin/utils/models_update.py" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/bin/utils/models_update.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/keras_asa/bin/utils/lstmCrfMtl.py" beforeDir="false" afterPath="$PROJECT_DIR$/keras_asa/bin/utils/lstmCrfMtl.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,8 +53,13 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/keras_asa/bin/run_merge_model.py" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/keras_asa/results" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/keras_asa/results" />
+    </key>
   </component>
   <component name="RunManager" selected="Python.run_raw_model_cv">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
@@ -139,7 +140,7 @@
       <option name="presentableId" value="Default" />
       <updated>1583992107089</updated>
       <workItem from="1583992117607" duration="95000" />
-      <workItem from="1586800542329" duration="17767000" />
+      <workItem from="1586800542329" duration="19971000" />
     </task>
     <servers />
   </component>

@@ -53,7 +53,7 @@ for train_index, test_index in CV_IDX:
     y_prediction = model.predict_model(input_feature=X_test, prediction_type=0)
     
     for i in range(len(y_acc_test)):
-        result = "%d\t%s\t%s\t%s\n" % (cv_idx, wav_names[X_test_wav[i]], y_acc_test[i], y_prediction[i])
+        result = "%d\t%s\t%s\t%s\n" % (cv_idx, wav_names[X_test_wav[i]], y_acc_test[i], y_prediction[i][0])
         print(result)
         CV_prediction.append(result)
     
@@ -63,7 +63,9 @@ for train_index, test_index in CV_IDX:
     # scores = lstm_model.evaluate(X_test, y_test, verbose=0)
     print("MSE: ", scores)
 
-with open("../results/mel_10CV_fl_dropout_Mtl.txt", "w") as output:
+with open("../results/mel_10CV_acc_dropout_Mtl.txt", "w") as output:
+    header = "CV\tstimulus\ttrue\tpred\n"
+    output.write(header)
     for prediction in CV_prediction:
         output.write(prediction)
 

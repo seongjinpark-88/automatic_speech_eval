@@ -1,5 +1,6 @@
 import os, sys
 import pickle
+import pprint
 
 from os.path import isdir, join
 from pathlib import Path
@@ -135,6 +136,37 @@ def get_audio_features(audio_path):
         mfcc_dict[i] = mfcc
 
     return wav2idx, wav_names, melspec_dict, mfcc_dict
+
+
+def get_phonological_features(setpath):
+    """
+    Get the phonological features from a csv file
+    """
+    phon_dict = {}
+    with open(setpath, 'r') as phonfile:
+        for line in phonfile:
+            line = line.strip().split(',')
+            wav_name = line[0].split('.')[0]
+            data = line[1:]
+            phon_dict[wav_name] = data
+    return phon_dict
+
+
+def combine_feat_types(phonetic, phonological):
+    """
+    Combine 2 dicts containing feature values for the data
+    Returns a dict of concatenated data
+    """
+    combined = {}
+    for k in phonetic.keys():
+        if k in phonological.keys():
+            # phonetic is a nested list with one item, flatten
+            phonetic[k] = [part for item in phonetic[k] for part in item]
+            # add phonological to phonetic
+            phonetic[k].extend(phonological[k])
+            combined[k] = phonetic[k]
+    # return new dict
+    return combined
 
 
 def get_data(data_file, wav2idx, feature_dict, acoustic = False):
