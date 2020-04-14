@@ -25,11 +25,10 @@ import keras
 from keras import backend as K
 from keras import optimizers
 
-from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
-from keras.models import Sequential, Model, load_model
-from keras.layers import Input, Dense, Dropout, Flatten, concatenate
-from keras.layers import Conv2D, MaxPooling2D, LSTM, GRU, Bidirectional
-from keras.utils import to_categorical
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.models import Model, load_model
+from keras.layers import Input, Dense, Dropout, concatenate
+from keras.layers import LSTM, Bidirectional
 
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
@@ -164,13 +163,13 @@ def get_data(data_file, wav2idx, feature_dict, acoustic = False):
             # x_data = np.reshape(x_data, np.shape(x_data)[1])
             X.append(x_data)
 
-        Y.append(float(accented)-1)
+        Y.append(float(accented))
 
     X = np.array(X)
     Y = np.array(Y)
     X_wav = np.array(X_wav)
 
-    print(Y[:10])
+    # print(Y[:10])
 
     return X, Y, X_wav
 
@@ -277,17 +276,17 @@ class MergeModels:
     def train_model(self, epochs = 100, batch_size = 64, input_feature = None, 
         output_label = None, validation = None, model_name = None):
 
-        early_stopping = EarlyStopping(monitor = 'val_loss', mode = 'min', patience = 10)
+        early_stopping = EarlyStopping(monitor='val_acc_output_loss', mode = 'min', patience = 10)
 
-        model_name = model_name + ".h5"
+        # model_name = model_name + ".h5"
 
-        save_best = ModelCheckpoint(model_name, monitor = 'val_loss', mode = 'min')
+        # save_best = ModelCheckpoint(model_name, monitor = 'val_acc_output_loss', mode = 'min')
 
         self.history = self.model.fit(input_feature, {'final_output': output_label}, 
             epochs = epochs, batch_size = batch_size, shuffle = True, 
             # validation_data = validation, verbose = 1, 
             validation_split = 0.1, verbose = 1,
-            callbacks = [early_stopping, save_best])
+            callbacks = [early_stopping])
         return self.history
 
     def save_model(self, save_path):

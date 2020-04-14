@@ -8,7 +8,7 @@ setwd("/home/seongjinpark/research/git_repo/automatic_speech_eval/keras_asa")
 
 ###### ANALYZE CV RESUTS (MERGE) ######
 
-merge_data = read.csv("results/raw_phon_10CV_comp.txt", sep = "\t")
+merge_data = read.csv("results/raw_phon_10CV_flu_wVal.txt", sep = "\t")
 summary(merge_data)
 colnames(merge_data) = c("CV", "stimulus", "true", "pred")
 merge_data$CV = as.factor(merge_data$CV)
@@ -16,7 +16,7 @@ merge_data$stimulus = str_replace(merge_data$stimulus, ".wav", "")
 merge_data$stimulus = as.factor(merge_data$stimulus)
 summary(merge_data)
 
-golden_data = read.csv("data/perception_results/comp_avgs.csv")
+golden_data = read.csv("data/perception_results/accented_avgs.csv")
 summary(golden_data)
 length(golden_data$stimulus)
 
@@ -27,9 +27,9 @@ merge_data$avg_score = merge_data$avg_score - 1
 summary(merge_data)
 
 
-mse(merge_data$avg_score, merge_data$pred)
+mse(merge_data$true, merge_data$pred)
 cor.test(mel_acc_data$true, mel_acc_data$pred)
-summary(lm(avg_score ~ pred, merge_data))
+summary(lm(true ~ pred, merge_data))
 
 
 
@@ -84,7 +84,7 @@ cor.test(eng_mel_data$true, eng_mel_data$pred)
 cor.test(kor_mel_data$true, kor_mel_data$pred)
 cor.test(chn_mel_data$true, chn_mel_data$pred)
 
-ggplot(mel_data, aes(x = true, y = pred, color = language)) + stat_summary(geom="line") +
+ggplot(merge_data, aes(x = avg_score, y = pred, color = language)) + stat_summary(geom="line") +
   ylim(-1, 6)
 
 

@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 wav2idx, wav_names, melspec_dict, mfcc_dict = models_update.get_audio_features("../audio/wavs/")
 
-phonetic_test = models_update.GetFeatures("../audio/wavs", "~/opensmile-2.3.0", "../audio/IS09_summary")
+phonetic_test = models_update.GetFeatures("../audio/wavs", "~/opensmile-2.3.0", "../audio/IS09_featureset")
 
 # phonetic_test.extract_features(summary_stats=True)
 
@@ -43,21 +43,24 @@ acoustic_features = phonetic_test.get_features_dict()
 #                                                                   "lspFreq_sma_de[6]", "lspFreq_sma_de[7]"])
 
 # Get mfccs and melspec features
-X, Y, X_wav = models_update.get_data("../data/perception_results/fluency_avgs.csv", 
+X, Y, X_wav = models_update.get_data("../data/perception_results/fluency_avgs.csv",
     wav2idx, melspec_dict, acoustic = False)
 
+# print(min(Y), max(Y))
+# exit()
+
 # Get acoustic features
-X_phon, Y, X_wav = models_update.get_data("../data/perception_results/fluency_avgs.csv", 
+X_phon, _, X_wav = models_update.get_data("../data/perception_results/fluency_avgs.csv",
     wav2idx, acoustic_features, acoustic = True)
 
 # Reshape data for lstm
 X = np.reshape(X, (np.shape(X)[0], np.shape(X)[2], np.shape(X)[1]))
 
 # Reshape data for mlp
-X_phon = np.reshape(X_phon, (np.shape(X_phon)[0], np.shape(X_phon)[-1]))
+# X_phon = np.reshape(X_phon, (np.shape(X_phon)[0], np.shape(X_phon)[-1]))
 
 # # Pad and normalize opensmile features (time-stamped)
-# X_phon = models_update.pad_feats(X_phon, normalize = True)
+X_phon = models_update.pad_feats(X_phon, normalize = True)
 
 print("X shape: ", np.shape(X))
 print("X phon. shape: ", np.shape(X_phon))
@@ -91,6 +94,8 @@ for train_index, test_index in CV_IDX:
     X_train_wav, X_test_wav = X_wav[train_index], X_wav[test_index]
     y_train, y_test = Y[train_index], Y[test_index]
 
+    # print(min(y_test), max(y_test))
+    # exit()
     # inner_cv = models_update.get_cv_index(10, X_train)
     # inner_idx = 1
 
@@ -102,17 +107,17 @@ for train_index, test_index in CV_IDX:
     #     y_inner_tr, y_inner_te = y_train[tr_index], y_train[te_index]
 
     # Create acoustic model
-    phon_model = models_update.Models(X_train_phon, "phonetic_model", model_type = "mlp")
-    # phon_lstm = phon_model.bi_lstm_model(n_lstm_units = 512, n_connected_units = 512)
-    phon_mlp = phon_model.mlp_model(n_connected_units = 512)
+    phon_model = models_update.Models(X_train_phon, "phonetic_model", model_type = "lstm")
+    phon_lstm = phon_model.bi_lstm_model(n_lstm_units = 512, n_connected_units = 512)
+    # phon_mlp = phon_model.mlp_model(n_connected_units = 512)
 
     # Create raw signal model
     raw_model = models_update.Models(X_train, "raw_acoustic", model_type = "lstm")
     raw_lstm = raw_model.bi_lstm_model(n_lstm_units = 512, n_connected_units = 512)
 
     # Merge two models
-    merged_model = models_update.MergeModels(input_models = [phon_mlp, raw_lstm], 
-        input_layers = [phon_model.mlp_input, raw_model.lstm_input])
+    merged_model = models_update.MergeModels(input_models = [phon_lstm, raw_lstm],
+        input_layers = [phon_model.lstm_input, raw_model.lstm_input])
 
     # Add final FC layer and compile the model
     merged_model.final_layers(n_connected_units = 128)
@@ -149,7 +154,7 @@ for train_index, test_index in CV_IDX:
     # Save final prediction results
     for i in range(len(y_test)):
         result = "%d\t%s\t%d\t%f\n" % (cv_idx, wav_names[X_test_wav[i]], y_test[i], y_prediction[i][0])
-#         print(result)
+        print(result)
         CV_prediction.append(result)
     
     cv_idx += 1
