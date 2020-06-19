@@ -6,6 +6,7 @@ kaldi/src/*/*
 !kaldi/src/doc/*
 !kaldi/src/*/Makefile
 !kaldi/src/*/README
+idea/*
 
 # Compiled Object files and python ciles
 *.slo

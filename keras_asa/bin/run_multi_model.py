@@ -23,51 +23,52 @@ def calc_r_squared(valy, y_preds):
 
 
 # create an instance of GetFeatures class
-phonetic_test = modeler.GetFeatures("../audio/wavs", "~/opensmile-2.3.0", "../audio/IS10_smallset")
+# phonetic_test = modeler.GetFeatures("../audio/wavs", "~/opensmile-2.3.0", "../audio/IS10_smallset")
+phonetic_test = modeler.GetFeatures("../audio/wavs", "~/opensmile-2.3.0", "../audio/IS09_summary")
 # uncomment to extract features for first time use
 # phonetic_test.extract_features()
 
 # get dict with all features for the dataset
-# acoustic_features = phonetic_test.get_features_dict()
+acoustic_features = phonetic_test.get_features_dict()
 
 # selected columns in IS10
-acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frameTime',
-                                                                  "mfcc_sma[0]", "mfcc_sma[1]", "mfcc_sma[2]",
-                                                                  "mfcc_sma[3]", "mfcc_sma[4]", "mfcc_sma[5]",
-                                                                  "mfcc_sma[6]", "mfcc_sma[7]", "mfcc_sma[8]",
-                                                                  "mfcc_sma[9]", "mfcc_sma[10]", "mfcc_sma[11]",
-                                                                  "mfcc_sma[12]", "mfcc_sma[13]", "mfcc_sma[14]",
-                                                                  "logMelFreqBand_sma[0]", "logMelFreqBand_sma[1]",
-                                                                  "logMelFreqBand_sma[2]", "logMelFreqBand_sma[3]",
-                                                                  "logMelFreqBand_sma[4]", "logMelFreqBand_sma[5]",
-                                                                  "logMelFreqBand_sma[6]", "logMelFreqBand_sma[7]",
-                                                                  "lspFreq_sma[0]", "lspFreq_sma[1]", "lspFreq_sma[2]",
-                                                                  "lspFreq_sma[3]", "lspFreq_sma[4]", "lspFreq_sma[5]",
-                                                                  "lspFreq_sma[6]", "lspFreq_sma[7]", "mfcc_sma_de[0]",
-                                                                  "mfcc_sma_de[1]", "mfcc_sma_de[2]", "mfcc_sma_de[3]",
-                                                                  "mfcc_sma_de[4]", "mfcc_sma_de[5]", "mfcc_sma_de[6]",
-                                                                  "mfcc_sma_de[7]", "mfcc_sma_de[8]", "mfcc_sma_de[9]",
-                                                                  "mfcc_sma_de[10]", "mfcc_sma_de[11]", "mfcc_sma_de[12]",
-                                                                  "mfcc_sma_de[13]", "mfcc_sma_de[14]",
-                                                                  "logMelFreqBand_sma_de[0]", "logMelFreqBand_sma_de[1]",
-                                                                  "logMelFreqBand_sma_de[2]", "logMelFreqBand_sma_de[3]",
-                                                                  "logMelFreqBand_sma_de[4]", "logMelFreqBand_sma_de[5]",
-                                                                  "logMelFreqBand_sma_de[6]", "logMelFreqBand_sma_de[7]",
-                                                                  "lspFreq_sma_de[0]", "lspFreq_sma_de[1]",
-                                                                  "lspFreq_sma_de[2]", "lspFreq_sma_de[3]",
-                                                                  "lspFreq_sma_de[4]", "lspFreq_sma_de[5]",
-                                                                  "lspFreq_sma_de[6]", "lspFreq_sma_de[7]"])
+# acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frameTime',
+#                                                                   "mfcc_sma[0]", "mfcc_sma[1]", "mfcc_sma[2]",
+#                                                                   "mfcc_sma[3]", "mfcc_sma[4]", "mfcc_sma[5]",
+#                                                                   "mfcc_sma[6]", "mfcc_sma[7]", "mfcc_sma[8]",
+#                                                                   "mfcc_sma[9]", "mfcc_sma[10]", "mfcc_sma[11]",
+#                                                                   "mfcc_sma[12]", "mfcc_sma[13]", "mfcc_sma[14]",
+#                                                                   "logMelFreqBand_sma[0]", "logMelFreqBand_sma[1]",
+#                                                                   "logMelFreqBand_sma[2]", "logMelFreqBand_sma[3]",
+#                                                                   "logMelFreqBand_sma[4]", "logMelFreqBand_sma[5]",
+#                                                                   "logMelFreqBand_sma[6]", "logMelFreqBand_sma[7]",
+#                                                                   "lspFreq_sma[0]", "lspFreq_sma[1]", "lspFreq_sma[2]",
+#                                                                   "lspFreq_sma[3]", "lspFreq_sma[4]", "lspFreq_sma[5]",
+#                                                                   "lspFreq_sma[6]", "lspFreq_sma[7]", "mfcc_sma_de[0]",
+#                                                                   "mfcc_sma_de[1]", "mfcc_sma_de[2]", "mfcc_sma_de[3]",
+#                                                                   "mfcc_sma_de[4]", "mfcc_sma_de[5]", "mfcc_sma_de[6]",
+#                                                                   "mfcc_sma_de[7]", "mfcc_sma_de[8]", "mfcc_sma_de[9]",
+#                                                                   "mfcc_sma_de[10]", "mfcc_sma_de[11]", "mfcc_sma_de[12]",
+#                                                                   "mfcc_sma_de[13]", "mfcc_sma_de[14]",
+#                                                                   "logMelFreqBand_sma_de[0]", "logMelFreqBand_sma_de[1]",
+#                                                                   "logMelFreqBand_sma_de[2]", "logMelFreqBand_sma_de[3]",
+#                                                                   "logMelFreqBand_sma_de[4]", "logMelFreqBand_sma_de[5]",
+#                                                                   "logMelFreqBand_sma_de[6]", "logMelFreqBand_sma_de[7]",
+#                                                                   "lspFreq_sma_de[0]", "lspFreq_sma_de[1]",
+#                                                                   "lspFreq_sma_de[2]", "lspFreq_sma_de[3]",
+#                                                                   "lspFreq_sma_de[4]", "lspFreq_sma_de[5]",
+#                                                                   "lspFreq_sma_de[6]", "lspFreq_sma_de[7]"])
 
 # selected columns in IS09
-# acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frameTime',
-#                                                                   "pcm_RMSenergy_sma_de","pcm_fftMag_mfcc_sma_de[1]",
-#                                                                   "pcm_fftMag_mfcc_sma_de[2]","pcm_fftMag_mfcc_sma_de[3]",
-#                                                                   "pcm_fftMag_mfcc_sma_de[4]",
-#                                                                   "pcm_fftMag_mfcc_sma_de[5]","pcm_fftMag_mfcc_sma_de[6]",
-#                                                                   "pcm_fftMag_mfcc_sma_de[7]","pcm_fftMag_mfcc_sma_de[8]",
-#                                                                   "pcm_fftMag_mfcc_sma_de[9]","pcm_fftMag_mfcc_sma_de[10]",
-#                                                                   "pcm_fftMag_mfcc_sma_de[11]","pcm_fftMag_mfcc_sma_de[12]",
-#                                                                   "pcm_zcr_sma_de","voiceProb_sma_de","F0_sma_de"])
+acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frameTime',
+                                                                  "pcm_RMSenergy_sma_de","pcm_fftMag_mfcc_sma_de[1]",
+                                                                  "pcm_fftMag_mfcc_sma_de[2]","pcm_fftMag_mfcc_sma_de[3]",
+                                                                  "pcm_fftMag_mfcc_sma_de[4]",
+                                                                  "pcm_fftMag_mfcc_sma_de[5]","pcm_fftMag_mfcc_sma_de[6]",
+                                                                  "pcm_fftMag_mfcc_sma_de[7]","pcm_fftMag_mfcc_sma_de[8]",
+                                                                  "pcm_fftMag_mfcc_sma_de[9]","pcm_fftMag_mfcc_sma_de[10]",
+                                                                  "pcm_fftMag_mfcc_sma_de[11]","pcm_fftMag_mfcc_sma_de[12]",
+                                                                  "pcm_zcr_sma_de","voiceProb_sma_de","F0_sma_de"])
 
 # select participants to use
 speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
@@ -101,7 +102,7 @@ for fpath in y_paths:
     shape = unzipped_feats.shape
 
     # create instance of class AdaptiveModel
-    adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../audio/IS10_smallset")
+    adapt = modeler.AdaptiveModel(unzipped_feats, unzipped_ys, shape, "../audio/IS09_summary")
 
     # split data into datasets
     cv_data, cv_ys = adapt.split_data_for_cv(k=10)
