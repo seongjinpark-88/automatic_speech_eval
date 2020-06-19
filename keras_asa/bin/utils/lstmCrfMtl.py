@@ -35,6 +35,7 @@ class lstmMtl:
         @param name: name of the model
         @param model_type: type of model (lstm or mlp)
         """
+        print(np.shape(X))
         if model_type == "lstm":
             self.input_shape = (np.shape(X)[1], np.shape(X)[2])
         elif model_type == "mlp":
@@ -83,7 +84,8 @@ class lstmMtl:
 
         adam = optimizers.Adam(learning_rate=l_rate)
 
-        self.model.compile(optimizer=adam, loss=[loss_fx, loss_fx, loss_fx], metrics={'acc_output': loss_fx})
+        self.model.compile(optimizer=adam, loss=[loss_fx, loss_fx, loss_fx], metrics={'acc_output': loss_fx}, 
+            loss_weights = [1, 1e-1, 1e-1])
         self.model.summary()
 
         # return self.model
@@ -105,8 +107,9 @@ class lstmMtl:
         return self.history
 
     def predict_model(self, input_feature=None, prediction_type=0):
+        self.pred_all = self.model.predict(input_feature)
         self.pred = self.model.predict(input_feature)[prediction_type]
-        return self.pred
+        return self.pred_all, self.pred
 
     def evaluate_model(self, input_feature, true_label):
         self.scores = self.model.evaluate(input_feature, true_label, verbose=0)

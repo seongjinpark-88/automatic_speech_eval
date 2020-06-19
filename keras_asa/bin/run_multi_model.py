@@ -71,7 +71,7 @@ acoustic_features = phonetic_test.get_features_dict(dropped_cols=['name', 'frame
 
 # select participants to use
 speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
-ㄱ# speaker_list = ["S07"]  # fixme: for testing--this doesn't actually work as expected, so something is hard-coded
+# speaker_list = ["S07"]  # fixme: for testing--this doesn't actually work as expected, so something is hard-coded
 
 y_paths = ["../data/perception_results/accented_avgs.csv",
            "../data/perception_results/fluency_avgs.csv",
@@ -116,11 +116,11 @@ for fpath in y_paths:
     #                                                                     "X_test.npy", "y_test.npy")
 
     # hyperparameter tuning on LSTM model
-    n_lstm_units = [5, 10, 20, 50]
-    n_connected_units = [5, 10, 20]
-    n_lstm = [1, 2, 5]
-    batch = [12, 64, 100]
-    learning_rate = [0.001, 0.005, 0.01]
+    n_lstm_units = [512] # [5, 10, 20, 50]
+    n_connected_units = [256] # [5, 10, 20]
+    n_lstm = [2] # [1, 2, 5]
+    batch = [64] # [12, 64, 100]
+    learning_rate = [0.001] # [0.001, 0.005, 0.01]
 
     # total_stats = [['mse', 'r_squared', 'number_lstm_units', 'number_lstm_layers', 'number_connected_units',
     #                 'batch_size', 'learning_rate']]
@@ -155,6 +155,7 @@ for fpath in y_paths:
                         r_value = calc_r_squared(valy, y_preds)
                         mse = mean_squared_error(valy, y_preds)
 
+                        print("r: %s\tmse: %s" % (r_value, mse))
                         model_stats = [str(mse), str(r_value), str(n_l_u), str(n_l), str(n_c_u), str(b), str(l_r)]
 
                         wfile.write(",".join(model_stats))

@@ -10,12 +10,12 @@ from sklearn.metrics import mean_squared_error
 
 
 # get phonological data
-phono_feats = modeler.get_phonological_features("../../SJP_JC_Audio/rhythm.csv")
+phono_feats = modeler.get_phonological_features("../data/rhythm.csv")
 
 # select participants to use
 speaker_list = ["S02", "S03", "S04", "S05", "S07", "S08", "S09", "S19", "S21", "S22", "S23", "S24", "S25", "S26", "S28"]
 
-all_dfiles = ["../../SJP_JC_Audio/perception_results/comp_avgs.csv"]
+all_dfiles = ["../data/perception_results/comp_avgs.csv"]
 
 for fpath in all_dfiles:
     # read in y data
@@ -111,7 +111,7 @@ for fpath in all_dfiles:
                     model_stats = [str(mse), str(r_value), str(n_c_u), str(n_c), str(b), str(l_r)]
                     total_stats.append(model_stats)
 
-    with open('../../SJP_JC_Audio/gridsearch/phonological_mlp_comprehensibility.csv', 'w') as wfile:
+    with open('../results/gridsearch/phonological_mlp_comprehensibility.csv', 'w') as wfile:
         for item in total_stats:
             wfile.write(",".join(item))
             wfile.write("\n")

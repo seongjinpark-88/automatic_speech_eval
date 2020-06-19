@@ -5,9 +5,22 @@ import numpy as np
 
 wav2idx, wav_names, melspec_dict, mfcc_dict = models_update.get_audio_features("../audio/wavs/")
 
-X, Y_acc, X_wav = models_update.get_data("../data/perception_results/accented_avgs.csv", wav2idx, melspec_dict)
-_, Y_flu, _ = models_update.get_data("../data/perception_results/fluency_avgs.csv", wav2idx, melspec_dict)
-_, Y_comp, _ = models_update.get_data("../data/perception_results/comp_avgs.csv", wav2idx, melspec_dict)
+phono_features = models_update.get_phonological_features("../data/rhythm.csv")  # or your path
+
+combined_features = models_update.concat_features(melspec_dict, phono_features, wav_names)
+
+X, Y_acc, X_wav = models_update.get_data("../data/perception_results/accented_avgs.csv", wav2idx, combined_features)
+
+# from pprint import pprint
+# pprint(combined_features)
+# print(np.shape(X))
+# exit()
+
+_, Y_flu, _ = models_update.get_data("../data/perception_results/fluency_avgs.csv", wav2idx, combined_features)
+_, Y_comp, _ = models_update.get_data("../data/perception_results/comp_avgs.csv", wav2idx, combined_features)
+
+
+
 
 CV_IDX = models_update.get_cv_index(10, X)
 
@@ -49,8 +62,8 @@ for train_index, test_index in CV_IDX:
     
     scores = model.evaluate_model(X_test, [y_acc_test, y_flu_test, y_comp_test])
     CV_mse.append(scores[1])
-    # prediction_type: 0 (acc), 1 (flu), 2 (comp)
-    y_prediction = model.predict_model(input_feature=X_test, prediction_type=0)
+    # prediction_type: 1 (acc), 2 (flu), 3 (comp)
+    y_prediction_all, y_prediction = model.predict_model(input_feature=X_test, prediction_type=0)
     
     for i in range(len(y_acc_test)):
         result = "%d\t%s\t%s\t%s\n" % (cv_idx, wav_names[X_test_wav[i]], y_acc_test[i], y_prediction[i][0])
@@ -61,9 +74,11 @@ for train_index, test_index in CV_IDX:
 
     # Final evaluation of the model
     # scores = lstm_model.evaluate(X_test, y_test, verbose=0)
+    print(np.shape(y_prediction_all))
+    print(model.model.metrics_names)
     print("MSE: ", scores)
 
-with open("../results/mel_10CV_acc_dropout_Mtl.txt", "w") as output:
+with open("../results/mel_10CV_acc_mel+phon_dropout_Mtl.txt", "w") as output:
     header = "CV\tstimulus\ttrue\tpred\n"
     output.write(header)
     for prediction in CV_prediction:

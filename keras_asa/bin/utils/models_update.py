@@ -2,6 +2,8 @@ import os, sys
 import pickle
 import pprint
 
+from collections import defaultdict
+
 from os.path import isdir, join
 from pathlib import Path
 
@@ -28,8 +30,11 @@ from keras import optimizers
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import Model, load_model
-from keras.layers import Input, Dense, Dropout, concatenate
+from keras.layers import Input, Dense, Dropout, concatenate, Flatten
 from keras.layers import LSTM, Bidirectional
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.layers.normalization import BatchNormalization
+from keras.layers.advanced_activations import ELU
 
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
@@ -98,9 +103,10 @@ def get_audio_features(audio_path):
     wav_names = [wav for wav in os.listdir(audio_path) if wav.endswith("wav")]
 
     # set sample length
-    samples = 132300
-    max_len = 0
-
+    duration = 14.56
+    sampling_rate = 44100
+    n_sample_fit = int(duration * sampling_rate)
+    
     # enumerate over audio files
     for i, w in enumerate(wav_names):
 
@@ -113,26 +119,26 @@ def get_audio_features(audio_path):
         # get sampling rate and audio length
         y, sr = librosa.load(wav_path) 
         
-        if 0 < len(y): # workaround: 0 length causes error
-            y, _ = librosa.effects.trim(y)
+        n_sample = y.shape[0]
 
-        if len(y) > samples: # long enough
-            y = y[0:0+samples]
+        if n_sample > n_sample_fit: # long enough
+            y = y[:n_sample_fit]
 
-        else: # pad blank
-            padding = samples - len(y)
-            offset = padding // 2
-            y = np.pad(y, (offset, samples - len(y) - offset), 'constant')
+        elif n_sample < n_sample_fit:
+            y = np.hstack((y, np.zeros((n_sample_fit - n_sample,))))
         
-        
-        mel_data = librosa.feature.melspectrogram(y = y, sr= sr)
+        logam = librosa.amplitude_to_db
+        mel_data = logam(librosa.feature.melspectrogram(y = y, sr= sr,
+            hop_length=256, n_fft=512, n_mels=96), ref = 1.0)
+        # mel_data = librosa.feature.melspectrogram(y=y, sr=sr, hop_length=256, n_fft=512, n_mels=96)
+        # print(np.shape(mel_data))
         mfcc_data = librosa.feature.mfcc(y = y, sr = sr, n_mfcc = 13)
         mfcc_delta = librosa.feature.delta(mfcc_data)
         mfcc_delta2 = librosa.feature.delta(mfcc_data, order = 2)
 
         mfcc = np.vstack((mfcc_data, mfcc_delta, mfcc_delta2))
         
-        melspec_dict[i] = mel_data
+        melspec_dict[i] = np.swapaxes(mel_data, 0, 1)
         mfcc_dict[i] = mfcc
 
     return wav2idx, wav_names, melspec_dict, mfcc_dict
@@ -150,6 +156,21 @@ def get_phonological_features(setpath):
             data = line[1:]
             phon_dict[wav_name] = data
     return phon_dict
+
+def concat_features(acoustic, phonological, wav_names):
+    combined = defaultdict(list)
+
+    for k in acoustic.keys():
+        wav_name = wav_names[k]
+        wav_name = wav_name.replace(".wav", "")
+        if wav_name in phonological.keys():
+            for i in acoustic[k]:
+                # print(np.shape(i))
+                feature = np.hstack([i, phonological[wav_name]])
+                # print(np.shape(feature))
+                combined[k].append(feature)
+
+    return combined
 
 
 def combine_feat_types(phonetic, phonological):
@@ -211,12 +232,20 @@ def get_cv_index(cv_number, x_input):
 
     return kf.split(x_input)
 
+# class FCN:
+#     def __init__(self, X, name):
+#         self.name = name
+#
+#     def fcn_model(selfself, num_class):
+
 class Models:
     def __init__(self, X, name, model_type):
         if model_type == "lstm":
             self.input_shape = (np.shape(X)[1], np.shape(X)[2])
         elif model_type == "mlp":
             self.input_shape = (np.shape(X)[-1],)
+        elif model_type == "fcn":
+            self.input_shape = (np.shape(X)[1], np.shape(X)[2], 1)
         else:
             print("Undefined input shape")
             exit()
@@ -244,8 +273,9 @@ class Models:
         dropout_1 = Dropout(dropout)(output_1)
         output_2 = Dense(second_units, activation = act)(dropout_1)
         dropout_2 = Dropout(dropout)(output_2)
-        final_dense = Dense(1, activation = 'linear')(dropout_2)
-        return final_dense
+        # final_dense = Dense(1, activation = 'linear')(dropout_2)
+        # return final_dense
+        return dropout_2
 
     def bi_lstm_model(self, n_lstm_units=512, dropout=0.2, n_connected_units=32, act='tanh'):
         """
@@ -273,9 +303,9 @@ class Models:
         
         output_3 = Dense(n_connected_units, activation = 'tanh')(output_2)
         dropout_3 = Dropout(dropout)(output_3)
-        final_dense = Dense(1, activation = 'linear')(dropout_3)
-        return final_dense
-
+        # final_dense = Dense(1, activation = 'linear')(dropout_3)
+        # return final_dense
+        return dropout_3
 
 class MergeModels:
     """
@@ -308,7 +338,7 @@ class MergeModels:
     def train_model(self, epochs = 100, batch_size = 64, input_feature = None, 
         output_label = None, validation = None, model_name = None):
 
-        early_stopping = EarlyStopping(monitor='val_acc_output_loss', mode = 'min', patience = 10)
+        early_stopping = EarlyStopping(monitor='val_loss', mode = 'min', patience = 10)
 
         # model_name = model_name + ".h5"
 
