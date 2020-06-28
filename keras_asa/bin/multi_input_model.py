@@ -24,7 +24,7 @@ np.random.seed(seed)
 import keras
 from keras import backend as K
 from keras.models import Sequential, Model
-from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten, TimeDistributed, Masking
+from keras.layers import Dense, LSTM, Bidirectional, Dropout, Flatten, TimeDistributed, Masking, GRU
 from keras import optimizers, Input
 from keras.layers import Conv2D, MaxPooling2D
 from sklearn.metrics import classification_report
@@ -83,23 +83,6 @@ def get_phonological_features(setpath):
             data = line[1:]
             phon_dict[wav_name] = data
     return phon_dict
-
-def get_ys_dict_all(ypath, speaker_list):
-    """
-    get the set of y values for the data;
-    these come from a csv with 3 cols:
-    score, stimuli, wav
-    ypath: the path to the csv, INCLUDING file name
-    """
-    ys = {}
-    with open(ypath, 'r') as yfile:
-        for line in yfile:
-            line = line.strip().split(",")
-            (speaker, sentence) = line[1].split("_")
-
-            if speaker in speaker_list:
-                ys[line[1]] = line[0]
-    return ys
 
 
 def get_ys_dict(ypath, speaker_list):
@@ -195,6 +178,23 @@ def cv_train_wrapper(model, cv_data, cv_ys, batch, num_epochs):  # , savefile="p
         all_preds.extend(ypreds)
 
     return all_y, all_preds
+
+
+def combine_feat_types(phonetic, phonological):
+    """
+    Combine 2 dicts containing feature values for the data
+    Returns a dict of concatenated data
+    """
+    combined = {}
+    for k in phonetic.keys():
+        if k in phonological.keys():
+            # phonetic is a nested list with one item, flatten
+            phonetic[k] = [part for item in phonetic[k] for part in item]
+            # add phonological to phonetic
+            phonetic[k].extend(phonological[k])
+            combined[k] = phonetic[k]
+    # return new dict
+    return combined
 
 
 class GetFeatures:
@@ -513,9 +513,9 @@ class AdaptiveModel:
         return model
 
     def lstm_model(self, n_lstm=2, n_lstm_units=50, dropout=0.2, n_connected=1,
-                     n_connected_units=25, l_rate = 0.001, beta_1=0.9, beta_2=0.999,
-                     act='relu', output_act='linear', loss_fx='mean_squared_error',
-                     output_size=1):
+                   n_connected_units=25, l_rate=0.001, beta_1=0.9, beta_2=0.999,
+                   act='relu', output_act='linear', loss_fx='mean_squared_error',
+                   output_size=1):
         """
         Initialize the LSTM-based model
         n_lstm:                 number of lstm layers
@@ -537,24 +537,24 @@ class AdaptiveModel:
         if n_lstm > 1:
             while n_lstm > 1:
                 model.add(Bidirectional(LSTM(n_lstm_units,
-                                                  activation=act,
-                                                  input_shape=self.data_shape[1:], dropout=dropout,
-                                                  recurrent_dropout=dropout, return_sequences=True)))
+                                             activation=act,
+                                             input_shape=self.data_shape[1:], dropout=dropout,
+                                             recurrent_dropout=dropout, return_sequences=True)))
                 n_lstm -= 1
             # print("N LSTM layers left equals: " + str(n_lstm))
             model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
-                                              activation=act, dropout=dropout, recurrent_dropout=dropout,
-                                              return_sequences=False)))
+                                         activation=act, dropout=dropout, recurrent_dropout=dropout,
+                                         return_sequences=False)))
             n_lstm -= 1
             # print("THE LSTM layers completed")
         else:
             model.add(Bidirectional(LSTM(n_lstm_units, input_shape=self.data_shape[1:],
-                                              activation=act, dropout=dropout, recurrent_dropout=dropout,
-                                              return_sequences=False)))
+                                         activation=act, dropout=dropout, recurrent_dropout=dropout,
+                                         return_sequences=False)))
         # add the connected layers
         while n_connected > 0:
-            model.add(Dense(n_connected_units, input_shape=(self.data_shape[0],1),
-                                 activation=act))
+            model.add(Dense(n_connected_units, input_shape=(self.data_shape[0], 1),
+                            activation=act))
             n_connected -= 1
         # print("The connected layer worked")
         # add the final layer with output activation
